@@ -1,0 +1,43 @@
+--------------------------------------
+Handy/SDL v0.5 GCC/SDL release INSTALL
+--------------------------------------
+
+
+REQUIREMENTS:
+-------------
+
+To compile Handy/SDL you need to check if you have the minimum
+requirements for compiling the sources:
+
+- GCC v4.3.x or higher
+- SDL v1.2.13 or higher
+- ZLIB v1.2.3
+- OpenGL libraries
+- supported OS (BeOS, Linux, FreeBSD and WIN32 through mingw); other OSs
+  may work to but you may need to change some items in the Makefile.
+
+Optionally you need a Atari Lynx boot ROM which is available on the Internet. 
+We can't include the boot ROM since it's still copyrighted.
+
+
+COMPILING:
+----------
+
+If you sure you have the minimum software requirements, you can compile
+Handy/SDL by issuing the following command in the directory where you
+decompressed the source:
+
+- Handy/SDL v0.5 using Handy v0.90 sourcebase: make -f Makefile-0.90
+- Handy/SDL v0.5 using Handy v0.95 sourcebase: make -f Makefile-0.95
+
+Optionally you can manually strip handy_sdl[.exe] to downsize the binary. If you have
+upx in your path somewhere, you can uncomment the line in the makefile that
+executes upx so that you'll end up with a somewhat smaller binary.
+
+That's it! You're done! You can now start the emulator with ./handy_sdl. See the
+output for more details or consult the README file for more info.
+
+For even more info, go to http://sdlemu.ngemu.com or send use an e-mail to the
+following e-mail address: shalafi AT xs4all DOT nl.
+
+SDLEMU

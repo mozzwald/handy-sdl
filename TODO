@@ -1,0 +1,18 @@
+Stuff to add/fix for the future release of Handy/SDL
+--------------------------------------------------
+
+- Configfile support
+- Joystick support
+- GUI
+
+Stuff that was added/fixed
+--------------------------
+
+- Handy WIN32 sources ported to GCC/SDL
+- Added SDL portions of graphics, sound and keyboard handling
+- Implent 8-bit and 16-bit rendering (32-bit is default atm)
+- OpenGL rendering
+- YUV Overlay rendering
+- Scaling and/or filtering routines
+- Better sound quality
+- Implement patches concerning breaks on new homebrew images

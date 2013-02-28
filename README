@@ -1,0 +1,116 @@
+--------------------------------------------
+Handy/SDL v0.5 release README
+--------------------------------------------
+
+--------------
+- DISCLAIMER -
+--------------
+
+Or, "O liability, I do disclaim thee!"
+
+Ported by SDLEMU and is based upon the original work by Keith Wilkins.
+For requirements please consult the INSTALL file for more information 
+about supported OS's and software requirements.
+
+The use of this software is entirely at your own risk. We can't be held
+responsible for damage done to you hardware and/or software. This software
+requires the use of the Atari Lynx boot ROM and/or Commercial ROM images. 
+You may only use the ROM images if you own the cartridges itself. The
+use of Commercial ROMs without owning the original cartridge is illegal in
+most countries and could result in fines and/or legal actions.
+
+This software is released under the GPL. For more information I direct you to
+the GPL.TXT. You may hack/change the code anyway you like. You may not
+commercially sell this software. If you make changes, release the source code
+to the public and send the changes you made to the original authors. 
+
+The products and brands used in these documents and/or sourcecode are owned by
+their respective companies.
+
+----------------------
+- What is Handy/SDL? -
+----------------------
+
+Handy is software dedicated to emulating the Atari Lynx hardware on a standard
+PC. The software was originally developed by Keith Wilkins [http://handy.sf.net]
+and was released under the GPL on 14th April 2004. 
+
+Handy/SDL is a port of the WIN32 sourcecode so that it can be used with the
+GCC compiler and the Simple Directmedia Layer (SDL) library. 
+
+Currently Handy/SDL compiles on WIN32 using mingw, and possible also on
+UN*X based systems (BeOS, Linux and FreeBSD). It may run on other systems
+as well but we can not guarantee that.
+
+The port was done by the SDLEMU crew (http://sdlemu.ngemu.com) and especially
+by Niels Wagenaar and Carwin Jones. You may contact us by e-mail using
+sdlemu@ngemu.com or leave a message on the SDLEMU Official Forum (see the website). 
+Patches and bugfixes are particularly welcome! :)
+
+More information about SDL can be found at http://www.libsdl.org.
+
+Note that the OpenSource release is not quite as 'advanced' as the originally
+released Handy/SDL v0.82-R1. The sources have been lost and everything was
+done from scratch. Please be patient for newer releases with more functionality.
+
+-------------------
+- Using Handy/SDL -
+-------------------
+
+After compiling the binary (see INSTALL) you can now run original Atari Lynx
+games. These games are distributed on cartridges and can therefore cannot be
+used on a PC. To use these games on Handy/SDL you need to get ROM images.
+Besides the ROM images from (commercial) games you must also obtain the
+Atari Lynx boot ROM which you must copy to the root directory where the binary
+resides. For legal issues concerning ROM images please consult the DISCLAIMER
+at the beginning of this file.
+
+After obtaining the Atari Lynx boot ROM and several ROMs you can now use 
+Handy/SDL using the following command:
+
+./handy_sdl [romfile] [options]
+
+The context of ROMFILE is the filename of the an Atari Lynx ROM dump (can be
+either compressed or uncompressed). You can also use switches. By just typing
+./vj you get an overview of the options you can use. WIN32 users should look
+into the stdout.txt for that information.
+
+This emulator also emulates the Atari Lynx gamebuttons. By using the following
+keyboard settings you can (possibly) play a given game:
+
+Atari Button A       : Z
+Atari Button B       : X
+Atari Button PAUSE   : RETURN
+Atari Button OPT1	 : F1
+Atari BUTTON OPT2    : F2
+Atari UP             : UP
+Atari DOWN           : DOWN
+Atari LEFT           : LEFT
+Atari RIGHT          : RIGHT
+
+With ESC you can easily stop Handy/SDL which will get you back to the prompt
+of your shell.
+
+
+-------------------
+- A note on sound -
+-------------------
+
+By default, the Lynx sound is turned on, but the quality is a bit bad
+in combination with the throttle code. It's not that bad, so at least try
+the sound support and test it on your system.
+
+-----------
+- Finally -
+-----------
+
+If you find bugs, enhance the code or simply have questions, drop us an e-mail
+at sdlemu AT ngemu DOT com or drop a message on the SDLEMU Official Forum. 
+
+We hope you enjoy the emulator and will use it wisely! 
+
+Special thanks go to guys over at ngemu.com and #ngemu (EFNET). Thanks also to
+Keith Wilkins who originally developed this emulator and released the sources
+to the public. We couldn't have done it without you!
+
+SDLEMU
