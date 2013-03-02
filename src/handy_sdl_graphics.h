@@ -59,9 +59,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <SDL.h>
-#include <SDL_main.h>
-#include <SDL_timer.h>
+#include <SDL/SDL.h>
+#include <SDL/SDL_main.h>
+#include <SDL/SDL_timer.h>
 
 inline	void    handy_sdl_scale(void);
 inline  void    handy_sdl_draw_graphics(void);
@@ -74,4 +74,5 @@ inline  void    handy_sdl_draw_filter(int filtertype, SDL_Surface *src, SDL_Surf
 		UBYTE  *handy_sdl_display_callback(ULONG objref);
 		void 	handy_sdl_render_buffer(void);
 		void    handy_sdl_video_close(void);
+		int		handy_sdl_video_early_setup(int surfacewidth, int surfaceheight, int sdl_bpp_flag, int videoflags);
 #endif

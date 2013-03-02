@@ -24,7 +24,7 @@
 #include <string.h>
 #include <math.h>
 
-#include "SDL.h"
+#include "SDL/SDL.h"
 #include "sdlemu_system.h"
 
 #ifdef __cplusplus

@@ -20,8 +20,8 @@
 #ifndef __SDLEMU_OPENGL_H__
 #define __SDLEMU_OPENGL_H__
 
-#include "SDL.h"
-#include "SDL_opengl.h"
+#include "SDL/SDL.h"
+#include "SDL/SDL_opengl.h"
 
 #ifdef __cplusplus
 extern "C" {

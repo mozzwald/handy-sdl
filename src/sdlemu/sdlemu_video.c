@@ -21,7 +21,7 @@
  
 static inline Uint32 getpixel(SDL_Surface *surface, int x, int y)
 {
-	int bpp = surface->format->BytesPerPixel;
+    int bpp = surface->format->BytesPerPixel;
     /* Here p is the address to the pixel we want to retrieve */
     Uint8 *p = (Uint8 *)surface->pixels + y * surface->pitch + x * bpp;
 
@@ -48,7 +48,7 @@ static inline Uint32 getpixel(SDL_Surface *surface, int x, int y)
 
 static inline void putpixel(SDL_Surface *surface, int x, int y, Uint32 pixel)
 {
-	int bpp = surface->format->BytesPerPixel;
+    int bpp = surface->format->BytesPerPixel;
 
     Uint8 *p = (Uint8 *)surface->pixels + y * surface->pitch + x * bpp;
 
@@ -82,13 +82,13 @@ static inline void putpixel(SDL_Surface *surface, int x, int y, Uint32 pixel)
 inline void sdlemu_video(SDL_Surface *s, SDL_Surface *d)
 {
 
-	SDL_Rect area;
+    SDL_Rect area;
 
-	area.x = 0;
-	area.y = 0;
-	area.w = s->w;
-	area.h = s->h;
-	SDL_BlitSurface( s, &area, d, &area);
+    area.x = 0;
+    area.y = 0;
+    area.w = s->w;
+    area.h = s->h;
+    SDL_BlitSurface( s, &area, d, &area);
 }
 
 inline void sdlemu_vidstretch_1(SDL_Surface *s, SDL_Surface *d, int width, int height, int size)
@@ -101,20 +101,20 @@ inline void sdlemu_vidstretch_1(SDL_Surface *s, SDL_Surface *d, int width, int h
 
     if( size >= 2 )
     {
-	  for(y=0;y< (height); y++)
-	  {
-	     for(x=0;x<(width);x++)
-	     {
-			pixel = getpixel( s, x, y );
+      for(y=0;y< (height); y++)
+      {
+         for(x=0;x<(width);x++)
+         {
+            pixel = getpixel( s, x, y );
             for( t1 = 0; t1 < size ; t1++)
-	        {
-		       for(t2=0; t2 < size ; t2++)
-		       {   
+            {
+               for(t2=0; t2 < size ; t2++)
+               {   
                   putpixel( d, ((x*size) + t2) , ((y*size) + t1), pixel);
                }
             }
-	     }
-	  }
+         }
+      }
     }
     else 
         /* Normally we shouldn't come here, but just in case */
@@ -135,7 +135,7 @@ inline void sdlemu_vidstretch_2(SDL_Surface *s, SDL_Surface *d, int width, int h
         dest.w = d->w;
         dest.h = d->h;
         SDL_SoftStretch(s, &src, d, &dest);
-	} else 
+    } else 
         /* Normally we shouldn't come here, but just in case */
         sdlemu_video(s, d);
    
@@ -148,18 +148,18 @@ inline void sdlemu_scanline_1(SDL_Surface *s, SDL_Surface *d, int width, int hei
     Uint32 pixel;
 
     for(y=0;y< (height); y++)
-	{
-	     for(x=0;x<(width);x++)
-	     {
-        	pixel = getpixel( s, x, y );
-        	if ( Scanline_core == 1 ) 
+    {
+         for(x=0;x<(width);x++)
+         {
+            pixel = getpixel( s, x, y );
+            if ( Scanline_core == 1 ) 
                   putpixel( d, (x*size) , ( y*size) , pixel);
             else {
                   for( t2=0; t2<size; t2++)
                        putpixel( d, (x*size) + t2 , ( y*size) , pixel);
                  }
-	     }
-	}
+         }
+    }
 
 }
 

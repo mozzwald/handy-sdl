@@ -34,7 +34,7 @@
 //                                                                          //
 // This is the Handy/SDL handling. It manages the handling functions        //
 // of the keyboard and/or joypad for emulating the Atari Lynx emulator      //
-// using the SDL Library.             										//
+// using the SDL Library.                                                     //
 //                                                                          //
 //    N. Wagenaar                                                           //
 // December 2005                                                            //
@@ -59,213 +59,242 @@
 #include <cstring>
 #include <ctime>
 #include <cctype>
-#include <SDL.h>
-#include <SDL_main.h>
-#include <SDL_timer.h>
+#include <SDL/SDL.h>
+#include <SDL/SDL_main.h>
+#include <SDL/SDL_timer.h>
 
 #include "handy_sdl_main.h"
 #include "handy_sdl_handling.h"
 
+// map keys differently for dingux
+#ifdef DINGUX
+int BT_A = SDLK_LCTRL;
+int BT_B = SDLK_LALT;
+
+    #define BT_LEFT     SDLK_LEFT
+    #define BT_RIGHT    SDLK_RIGHT
+    #define BT_UP       SDLK_UP
+    #define BT_DOWN     SDLK_DOWN
+    #define BT_PAUSE    SDLK_RETURN      // START
+    //#define BT_A        SDLK_LCTRL       // A
+    //#define BT_B        SDLK_LALT        // B
+    #define BT_OPT1     SDLK_LSHIFT      // Y
+    #define BT_OPT2     SDLK_SPACE       // X
+    #define BT_OFF      SDLK_ESCAPE      // SELECT
+#else
+    #define BT_LEFT     SDLK_LEFT
+    #define BT_RIGHT    SDLK_RIGHT
+    #define BT_UP       SDLK_UP
+    #define BT_DOWN     SDLK_DOWN
+    #define BT_PAUSE    SDLK_RETURN
+    #define BT_A        SDLK_z
+    #define BT_B        SDLK_x
+    #define BT_OPT1     SDLK_F1
+    #define BT_OPT2     SDLK_F2
+    #define BT_OFF      SDLK_ESCAPE
+#endif
+
 int  handy_sdl_on_key_down(SDL_KeyboardEvent key, int mask)
 {
-	Sint16 x_move = 0, y_move = 0;
-	
+    Sint16 x_move = 0, y_move = 0;
+    
 /*    
     if(joy) {
-    	x_move = SDL_JoystickGetAxis(joystick, 0);
-		y_move = SDL_JoystickGetAxis(joystick, 1);
+        x_move = SDL_JoystickGetAxis(joystick, 0);
+        y_move = SDL_JoystickGetAxis(joystick, 1);
     }
 */  
 
+    if(key.keysym.sym == BT_B) return mask |= BUTTON_B;
+    if(key.keysym.sym == BT_A) return mask |= BUTTON_A;
+
     switch(key.keysym.sym) {
-    case SDLK_LEFT: {  // Lynx LEFT
-		mask|=BUTTON_LEFT;
-		break;
-    }
-    case SDLK_RIGHT: { // Lynx RIGHT
-		mask|=BUTTON_RIGHT;
-		break;
-    }
-	
-    case SDLK_UP: { // Lynx UP
-		mask|=BUTTON_UP;
-		break;
-    }
-	
-    case SDLK_DOWN: { // Lynx DOWN
-		mask|=BUTTON_DOWN;
-		break;
-    }
-	
-    case SDLK_RETURN: { // Lynx PAUSE
-		mask|=BUTTON_PAUSE;
-		break;
-    }
-	
-    case SDLK_x: { // Lynx B
-        mask|=BUTTON_B;
-		break;
-    }
-	
-    case SDLK_z: { // Lynx A
-		mask|=BUTTON_A; 
-		break;
-    }
-	
-	case SDLK_F1: { // Lynx Option 1
-		mask|=BUTTON_OPT1;
-		break;
-	}
+        case BT_LEFT: {  // Lynx LEFT
+            mask|=BUTTON_LEFT;
+            break;
+        }
+        case BT_RIGHT: { // Lynx RIGHT
+            mask|=BUTTON_RIGHT;
+            break;
+        }
 
-	case SDLK_F2: { // Lynx Option 2
-		mask|=BUTTON_OPT2;
-		break;
-	}
+        case BT_UP: { // Lynx UP
+            mask|=BUTTON_UP;
+            break;
+        }
 
-   
+        case BT_DOWN: { // Lynx DOWN
+            mask|=BUTTON_DOWN;
+            break;
+        }
 
-    case SDLK_ESCAPE: { // ON/OFF key (well, definately more off :-)
-       handy_sdl_quit();				
+        case BT_PAUSE: { // Lynx PAUSE
+            mask|=BUTTON_PAUSE;
+            break;
+        }
+
+        //case BT_B: { // Lynx B
+        //    mask|=BUTTON_B;
+        //    break;
+        //}
+
+        //case BT_A: { // Lynx A
+        //    mask|=BUTTON_A; 
+        //    break;
+        //}
+
+        case BT_OPT1: { // Lynx Option 1
+            mask|=BUTTON_OPT1;
+            break;
+        }
+
+        case BT_OPT2: { // Lynx Option 2
+            mask|=BUTTON_OPT2;
+            break;
+        }
+
+        case BT_OFF: { // ON/OFF key (well, definately more off :-)
+            handy_sdl_quit();
+        }
+
+        default: {
+            break;
+        }
+
     }
 
-	default: {
-	   break;
-	}
-
-	}
-	
 /*    
     if(joy) {
     if(x_move > 32768/2)
 
-    	eventstate |= ( HID_EVENT_RIGHT ); // seems to work fine
-    			
+        eventstate |= ( HID_EVENT_RIGHT ); // seems to work fine
+                
     if(x_move < -32768/2)
-    	eventstate |= ( HID_EVENT_LEFT );
+        eventstate |= ( HID_EVENT_LEFT );
   
- 	if(y_move > 32768/2)
-    	eventstate |= ( HID_EVENT_DOWN );
-    			
+     if(y_move > 32768/2)
+        eventstate |= ( HID_EVENT_DOWN );
+                
     if(y_move < -32768/2)
-    	eventstate |= ( HID_EVENT_UP );
-    	
+        eventstate |= ( HID_EVENT_UP );
+        
     if(SDL_JoystickGetButton(joystick, 1) == SDL_PRESSED)
-    	eventstate |= ( HID_EVENT_A );
+        eventstate |= ( HID_EVENT_A );
     
     if(SDL_JoystickGetButton(joystick, 2) == SDL_PRESSED)
-    	eventstate |= ( HID_EVENT_B );
-    	
+        eventstate |= ( HID_EVENT_B );
+        
     if(SDL_JoystickGetButton(joystick, 3) == SDL_PRESSED)
-    	eventstate |= ( HID_EVENT_L );
-    	
+        eventstate |= ( HID_EVENT_L );
+        
     if(SDL_JoystickGetButton(joystick, 4) == SDL_PRESSED)
-    	eventstate |= ( HID_EVENT_R );
+        eventstate |= ( HID_EVENT_R );
     }
 */
 
-	return mask;
+    return mask;
 
 }
 
 int  handy_sdl_on_key_up(SDL_KeyboardEvent key, int mask)
 {
-	Sint16 x_move = 0, y_move = 0;
-	
+    Sint16 x_move = 0, y_move = 0;
+    
 //  Uint8 *keystate = SDL_GetKeyState(NULL); // First to initialize the keystates
-//	int mod = SDL_GetModState();
+//    int mod = SDL_GetModState();
 
 /*    
     if(joy) {
-    	x_move = SDL_JoystickGetAxis(joystick, 0);
-		y_move = SDL_JoystickGetAxis(joystick, 1);
+        x_move = SDL_JoystickGetAxis(joystick, 0);
+        y_move = SDL_JoystickGetAxis(joystick, 1);
     }
 */  
+    if(key.keysym.sym == BT_B) return mask &= ~BUTTON_B;
+    if(key.keysym.sym == BT_A) return mask &= ~BUTTON_A;
 
     switch(key.keysym.sym)
-	{
-    case SDLK_LEFT: {  // Lynx LEFT
-		mask&= ~BUTTON_LEFT;
-		break;
-    }
-    case SDLK_RIGHT: { // Lynx RIGHT
-		mask&= ~BUTTON_RIGHT;
-		break;
-    }
-	
-    case SDLK_UP: { // Lynx UP
-		mask&= ~BUTTON_UP;
-		break;
-    }
-	
-    case SDLK_DOWN: { // Lynx DOWN
-		mask&= ~BUTTON_DOWN;
-		break;
-    }
-	
-    case SDLK_RETURN: { // Lynx PAUSE
-		mask&= ~BUTTON_PAUSE;
-		break;
-    }
-	
-    case SDLK_x: { // Lynx B
-        mask&= ~BUTTON_B;
-		break;
-    }
-	
-    case SDLK_z: { // Lynx A
-       mask&= ~BUTTON_A; 
-       break;
-    }
-	
-	case SDLK_F1: {// Lynx Option1
-		mask&= ~BUTTON_OPT1;
-		break;
-	}
+    {
+        case BT_LEFT: {  // Lynx LEFT
+            mask&= ~BUTTON_LEFT;
+            break;
+        }
+        case BT_RIGHT: { // Lynx RIGHT
+            mask&= ~BUTTON_RIGHT;
+            break;
+        }
+        
+        case BT_UP: { // Lynx UP
+            mask&= ~BUTTON_UP;
+            break;
+        }
+        
+        case BT_DOWN: { // Lynx DOWN
+            mask&= ~BUTTON_DOWN;
+            break;
+        }
+        
+        case BT_PAUSE: { // Lynx PAUSE
+            mask&= ~BUTTON_PAUSE;
+            break;
+        }
+        
+        //case BT_B: { // Lynx B
+        //    mask&= ~BUTTON_B;
+        //    break;
+        //}
+        
+        //case BT_A: { // Lynx A
+        //   mask&= ~BUTTON_A; 
+        //   break;
+        //}
+        
+        case BT_OPT1: {// Lynx Option1
+            mask&= ~BUTTON_OPT1;
+            break;
+        }
 
-	case SDLK_F2: {// Lynx Option2
-		mask&= ~BUTTON_OPT2;
-		break;
-	}
+        case BT_OPT2: {// Lynx Option2
+            mask&= ~BUTTON_OPT2;
+            break;
+        } 
 
-   
-
-    case SDLK_ESCAPE: {// ON/OFF key (well, definately more off :-)
-       handy_sdl_quit();				
+        case BT_OFF: {// ON/OFF key (well, definately more off :-)
+           handy_sdl_quit();                
+        }
+        
+        default: {
+           break;
+        }
+    
     }
-	
-	default: {
-	   break;
-	}
-	
-	}
 /*    
     if(joy) {
     if(x_move > 32768/2)
 
-    	eventstate |= ( HID_EVENT_RIGHT ); // seems to work fine
-    			
+        eventstate |= ( HID_EVENT_RIGHT ); // seems to work fine
+                
     if(x_move < -32768/2)
-    	eventstate |= ( HID_EVENT_LEFT );
+        eventstate |= ( HID_EVENT_LEFT );
   
- 	if(y_move > 32768/2)
-    	eventstate |= ( HID_EVENT_DOWN );
-    			
+     if(y_move > 32768/2)
+        eventstate |= ( HID_EVENT_DOWN );
+                
     if(y_move < -32768/2)
-    	eventstate |= ( HID_EVENT_UP );
-    	
+        eventstate |= ( HID_EVENT_UP );
+        
     if(SDL_JoystickGetButton(joystick, 1) == SDL_PRESSED)
-    	eventstate |= ( HID_EVENT_A );
+        eventstate |= ( HID_EVENT_A );
     
     if(SDL_JoystickGetButton(joystick, 2) == SDL_PRESSED)
-    	eventstate |= ( HID_EVENT_B );
-    	
+        eventstate |= ( HID_EVENT_B );
+        
     if(SDL_JoystickGetButton(joystick, 3) == SDL_PRESSED)
-    	eventstate |= ( HID_EVENT_L );
-    	
+        eventstate |= ( HID_EVENT_L );
+        
     if(SDL_JoystickGetButton(joystick, 4) == SDL_PRESSED)
-    	eventstate |= ( HID_EVENT_R );
+        eventstate |= ( HID_EVENT_R );
     }
 */
 
-	return mask;
+    return mask;
 }

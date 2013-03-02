@@ -20,7 +20,7 @@
 #ifndef SDLEMU_SYSTEM_H
 #define SDLEMU_SYSTEM_H
 
-#include <SDL.h>
+#include <SDL/SDL.h>
 
 #ifndef NULL
 #define NULL 0

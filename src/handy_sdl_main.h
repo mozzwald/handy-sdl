@@ -93,4 +93,5 @@ inline	int 	handy_sdl_update(void);
 		void 	handy_sdl_rom_info(void);
 		int 	main(int argc, char *argv[]);
 		void	handy_sdl_quit(void);
+		void	handy_sdl_core_reinit(char *romname);
 #endif

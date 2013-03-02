@@ -59,9 +59,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <SDL.h>
-#include <SDL_main.h>
-#include <SDL_timer.h>
+#include <SDL/SDL.h>
+#include <SDL/SDL_main.h>
+#include <SDL/SDL_timer.h>
  
 int		handy_sdl_on_key_up(SDL_KeyboardEvent key, int mask);
 int		handy_sdl_on_key_down(SDL_KeyboardEvent key, int mask);

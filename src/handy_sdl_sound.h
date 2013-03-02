@@ -59,13 +59,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <SDL.h>
-#include <SDL_main.h>
-#include <SDL_timer.h>
+#include <SDL/SDL.h>
+#include <SDL/SDL_main.h>
+#include <SDL/SDL_timer.h>
  
 //#include "handy_sdl_main.h"
 
-int 	handy_sdl_audio_init(void);
-void 	handy_sdl_audio_callback(void *userdata, Uint8 *stream, int len);
+int handy_sdl_audio_init(void);
+void handy_sdl_audio_callback(void *userdata, Uint8 *stream, int len);
 
 #endif
