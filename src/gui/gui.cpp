@@ -399,7 +399,7 @@ s32 load_file(char **wildcards, char *result)
 			// change to read key state later
 			while(SDL_PollEvent(&gui_event)) {
 				if(gui_event.type == SDL_KEYDOWN) {
-					if(gui_event.key.keysym.sym == SDLK_LCTRL) { // DINGOO A - apply parameter or enter submenu
+					if(gui_event.key.keysym.sym == SDLK_SPACE) { // DINGOO A - apply parameter or enter submenu
 						if(current_column == 1) {
 							repeat = 0;
 							chdir(dir_list[current_dir_selection]);
@@ -413,7 +413,7 @@ s32 load_file(char **wildcards, char *result)
 							}
 						}
 					}
-					if(gui_event.key.keysym.sym == SDLK_LALT) { // DINGOO B - exit or back to previous menu
+					if(gui_event.key.keysym.sym == SDLK_LSHIFT) { // DINGOO B - exit or back to previous menu
 						return_value = -1;
 						repeat = 0;
 						break;
@@ -611,9 +611,9 @@ void gui_MainMenuRun(MENU *menu)
 		while(SDL_PollEvent(&gui_event)) {
 			if(gui_event.type == SDL_KEYDOWN) {
 				// DINGOO A - apply parameter or enter submenu
-				if(gui_event.key.keysym.sym == SDLK_LCTRL) if(mi->itemOnA != NULL) (*mi->itemOnA)();
+				if(gui_event.key.keysym.sym == SDLK_SPACE) if(mi->itemOnA != NULL) (*mi->itemOnA)();
 				// DINGOO B - exit or back to previous menu
-				if(gui_event.key.keysym.sym == SDLK_LALT) return;
+				if(gui_event.key.keysym.sym == SDLK_LSHIFT) return;
 				// DINGOO UP - arrow down
 				if(gui_event.key.keysym.sym == SDLK_UP) if(--menu->itemCur < 0) menu->itemCur = menu->itemNum - 1;
 				// DINGOO DOWN - arrow up
@@ -693,11 +693,11 @@ void gui_Run()
 	gui_MainMenuRun(&gui_MainMenu);
 	filter = (gui_ImageScaling == 0 ? 6 : 0); // remove later, temporal hack
 	if(gui_SwapAB == 0) {
-		BT_A = SDLK_LCTRL;
-		BT_B = SDLK_LALT;
+		BT_A = SDLK_LSHIFT;
+		BT_B = SDLK_SPACE;
 	} else {
-		BT_A = SDLK_LALT;
-		BT_B = SDLK_LCTRL;
+		BT_A = SDLK_SPACE;
+		BT_B = SDLK_LSHIFT;
 	}
 	gui_ClearScreen();
 	SDL_EnableKeyRepeat(0, 0);
@@ -775,14 +775,3 @@ void gui_Flip()
 	SDL_BlitSurface(menuSurface, 0, mainSurface, &dstrect);
 	SDL_Flip(mainSurface);
 }
-
-
-
-
-
-
-
-
-
-
-

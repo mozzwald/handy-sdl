@@ -66,21 +66,21 @@
 #include "handy_sdl_main.h"
 #include "handy_sdl_handling.h"
 
-// map keys differently for dingux
+// map keys differently for zipit
 #ifdef DINGUX
-int BT_A = SDLK_LCTRL;
-int BT_B = SDLK_LALT;
+int BT_A = SDLK_SPACE;
+int BT_B = SDLK_LSHIFT;
 
     #define BT_LEFT     SDLK_LEFT
     #define BT_RIGHT    SDLK_RIGHT
     #define BT_UP       SDLK_UP
     #define BT_DOWN     SDLK_DOWN
-    #define BT_PAUSE    SDLK_RETURN      // START
+    #define BT_PAUSE    SDLK_p      // p
     //#define BT_A        SDLK_LCTRL       // A
     //#define BT_B        SDLK_LALT        // B
-    #define BT_OPT1     SDLK_LSHIFT      // Y
-    #define BT_OPT2     SDLK_SPACE       // X
-    #define BT_OFF      SDLK_ESCAPE      // SELECT
+    #define BT_OPT1     SDLK_LCTRL      // Y
+    #define BT_OPT2     SDLK_z       // X
+    #define BT_OFF      SDLK_ESCAPE      // Smiley
 #else
     #define BT_LEFT     SDLK_LEFT
     #define BT_RIGHT    SDLK_RIGHT
