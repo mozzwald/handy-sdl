@@ -24,6 +24,7 @@
 #include <unistd.h>
 #include <dirent.h>
 #include <SDL/SDL.h>
+#include <errno.h>
 
 #include "gui.h"
 #include "font.h"
