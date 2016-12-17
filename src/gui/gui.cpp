@@ -14,9 +14,9 @@
 	SHOW FPS: YES / NO
 	LIMIT FPS: YES / NO
 	SWAP A/B: YES / NO
-	
 
-*/ 
+
+*/
 
 #include <stdio.h>
 #include <sys/types.h>
@@ -292,7 +292,7 @@ s32 load_file(char **wildcards, char *result)
 
 		// DEBUG
 		//printf("Current directory: %s\n", current_dir_name);
-		
+
 		do {
 			if(current_dir) current_file = readdir(current_dir); else current_file = NULL;
 
@@ -399,7 +399,7 @@ s32 load_file(char **wildcards, char *result)
 			// change to read key state later
 			while(SDL_PollEvent(&gui_event)) {
 				if(gui_event.type == SDL_KEYDOWN) {
-					if(gui_event.key.keysym.sym == SDLK_SPACE) { // DINGOO A - apply parameter or enter submenu
+					if(gui_event.key.keysym.sym == SDLK_RETURN) { // DINGOO A - apply parameter or enter submenu
 						if(current_column == 1) {
 							repeat = 0;
 							chdir(dir_list[current_dir_selection]);
@@ -413,7 +413,7 @@ s32 load_file(char **wildcards, char *result)
 							}
 						}
 					}
-					if(gui_event.key.keysym.sym == SDLK_LSHIFT) { // DINGOO B - exit or back to previous menu
+					if(gui_event.key.keysym.sym == SDLK_ESCAPE) { // DINGOO B - exit or back to previous menu
 						return_value = -1;
 						repeat = 0;
 						break;
@@ -488,8 +488,7 @@ s32 load_file(char **wildcards, char *result)
 		for(i = 0; i < num_dirs; i++) free(dir_list[i]);
 		free(dir_list);
 	}
-	
-	
+
 	return return_value;
 }
 
@@ -611,9 +610,9 @@ void gui_MainMenuRun(MENU *menu)
 		while(SDL_PollEvent(&gui_event)) {
 			if(gui_event.type == SDL_KEYDOWN) {
 				// DINGOO A - apply parameter or enter submenu
-				if(gui_event.key.keysym.sym == SDLK_SPACE) if(mi->itemOnA != NULL) (*mi->itemOnA)();
+				if(gui_event.key.keysym.sym == SDLK_RETURN) if(mi->itemOnA != NULL) (*mi->itemOnA)();
 				// DINGOO B - exit or back to previous menu
-				if(gui_event.key.keysym.sym == SDLK_LSHIFT) return;
+				if(gui_event.key.keysym.sym == SDLK_ESCAPE) return;
 				// DINGOO UP - arrow down
 				if(gui_event.key.keysym.sym == SDLK_UP) if(--menu->itemCur < 0) menu->itemCur = menu->itemNum - 1;
 				// DINGOO DOWN - arrow up
@@ -651,11 +650,11 @@ void get_config_path()
 		if(env != NULL) strcat(config_full_path, env);
 		strcat(config_full_path, "/.handy"); 
 		mkdir(config_full_path
-		#ifndef WIN32 
-		, 0777 
-		#endif 
+		#ifndef WIN32
+		, 0777
+		#endif
 		);
-	
+
 		// return if not read-only, otherwise we are on rzx50 or a380 dingux
 		if(errno != EROFS && errno != EACCES && errno != EPERM) return;
 		memset(config_full_path, 0 , 512);
@@ -665,11 +664,11 @@ void get_config_path()
 		getcwd(config_full_path, MAX__PATH);
 		strcat(config_full_path, "/.handy");
 		mkdir(config_full_path
-		#ifndef WIN32 
-		, 0777 
-		#endif 
+		#ifndef WIN32
+		, 0777
+		#endif
 		);
-		
+
 	}
 
 	// DEBUG
@@ -693,11 +692,11 @@ void gui_Run()
 	gui_MainMenuRun(&gui_MainMenu);
 	filter = (gui_ImageScaling == 0 ? 6 : 0); // remove later, temporal hack
 	if(gui_SwapAB == 0) {
-		BT_A = SDLK_LSHIFT;
-		BT_B = SDLK_SPACE;
+		BT_A = SDLK_p;
+		BT_B = SDLK_o;
 	} else {
-		BT_A = SDLK_SPACE;
-		BT_B = SDLK_LSHIFT;
+		BT_A = SDLK_o;
+		BT_B = SDLK_p;
 	}
 	gui_ClearScreen();
 	SDL_EnableKeyRepeat(0, 0);
