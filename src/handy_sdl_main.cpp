@@ -384,7 +384,7 @@ int main(int argc, char *argv[])
     getcwd(load_filename, 512);
     sprintf(bios_path_and_name, "%s/%s", load_filename, "lynxboot.img");
 
-    gAudioEnabled = TRUE;
+    gAudioEnabled = FALSE; // Disable audio by default for Zipit
 
     // Default output
     printf("Handy GCC/SDL Portable Atari Lynx Emulator %s\n", HANDY_SDL_VERSION);
