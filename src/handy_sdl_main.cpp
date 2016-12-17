@@ -294,8 +294,9 @@ void handy_sdl_quit(void)
     free(mpLynxBuffer);
 
     // Destroy SDL Surface's
-    SDL_FreeSurface(HandyBuffer);
-    SDL_FreeSurface(mainSurface);
+    // Causes Illegal Instruction on Zipit Z2
+    //SDL_FreeSurface(HandyBuffer);
+    //SDL_FreeSurface(mainSurface);
 
     // Close SDL Subsystems
     SDL_QuitSubSystem(SDL_INIT_VIDEO|SDL_INIT_AUDIO);
