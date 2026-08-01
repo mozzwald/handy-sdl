@@ -67,6 +67,7 @@
 #include "handy_sdl_graphics.h"
 #include "handy_sdl_handling.h"
 #include "handy_sdl_sound.h"
+#include "handy_sdl_comlynx.h"
 #include "handy_sdl_usage.h"
 //#include "sdlemu/sdlemu_opengl.h"
 
@@ -358,6 +359,15 @@ int main(int argc, char *argv[])
 			if ( frameskip > 9 )
 				frameskip = 9;
 		}
+		if (!strcmp(argv[i], "-comlynx"))
+		{
+			if (i+1 >= argc || !handy_sdl_comlynx_parse(argv[++i]))
+			{
+				printf("ComLynx: -comlynx needs listen:PORT or connect:HOST:PORT\n");
+				exit(EXIT_FAILURE);
+			}
+		}
+		if (!strcmp(argv[i], "-comlynxtrace"))	handy_sdl_comlynx_trace(1);
 		if (!strcmp(argv[i], "-bpp"))
 		{
 			bpp = atoi(argv[++i]);
@@ -461,6 +471,9 @@ int main(int argc, char *argv[])
 	// Query Rom Image information
 	handy_sdl_rom_info();
 
+	// Attach ComLynx to a TCP socket if one was requested
+	handy_sdl_comlynx_init();
+
 	// Initialise Handy/SDL video
 	if( !handy_sdl_video_setup(rendertype,fsaa,Fullscreen, bpp, LynxScale, accel, sync) )
 	{
@@ -519,6 +532,11 @@ int main(int argc, char *argv[])
 		{
 			if(!gSystemHalt)
 			{
+				// Pump ComLynx once per batch. The UART Rx queue holds only
+				// 32 bytes and drops overruns silently, so this cannot be
+				// moved out to the once-per-frame loop.
+				handy_sdl_comlynx_poll();
+
 				for(ULONG loop=1024;loop;loop--)
 				{
 					mpLynx->Update();
@@ -575,6 +593,8 @@ int main(int argc, char *argv[])
 
 
 	}
+
+	handy_sdl_comlynx_close();
 
 	return 0;
 }

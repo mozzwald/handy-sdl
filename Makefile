@@ -78,7 +78,8 @@ OBJS = \
 		obj/handy_sdl_main.o \
 		obj/handy_sdl_handling.o \
 		obj/handy_sdl_graphics.o \
-		obj/handy_sdl_sound.o
+		obj/handy_sdl_sound.o \
+		obj/handy_sdl_comlynx.o
 
 
 all: checkenv message obj $(TARGET)$(EXESUFFIX)

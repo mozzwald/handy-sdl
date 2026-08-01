@@ -202,6 +202,9 @@ class CMikie : public CLynxBase
 		void	ComLynxRxData(int data);
 		void	ComLynxTxLoopback(int data);
 		void	ComLynxTxCallback(void (*function)(int data,UOBJREF objref),UOBJREF objref);
+		// Free slots in the Rx queue. ComLynxRxData() silently discards when
+		// full, so an external transport must check this before feeding bytes.
+		int		ComLynxRxSpace(void) { return UART_MAX_RX_QUEUE-mUART_Rx_waiting; };
 		
 		void	DisplaySetAttributes(ULONG Rotate, ULONG Format, ULONG Pitch, UBYTE* (*DisplayCallback)(UOBJREF objref),UOBJREF objref);
 		

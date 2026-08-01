@@ -290,6 +290,7 @@ class CSystem : public CSystemBase
 		void	ComLynxCable(int status) { mMikie->ComLynxCable(status); };
 		void	ComLynxRxData(int data)  { mMikie->ComLynxRxData(data); };
 		void	ComLynxTxCallback(void (*function)(int data,UOBJREF objref),UOBJREF objref) { mMikie->ComLynxTxCallback(function,objref); };
+		int		ComLynxRxSpace(void) { return mMikie->ComLynxRxSpace(); };
 
 // Suzy system interfacing
 
