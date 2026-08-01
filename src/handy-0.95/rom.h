@@ -60,7 +60,7 @@ class CRom : public CLynxBase
 	// Function members
 
 	public:
-		CRom(char *romfile);
+		CRom(const char *romfile);
 
 	public:
 		void	Reset(void);

@@ -201,9 +201,9 @@ class CMikie : public CLynxBase
 		void	ComLynxCable(int status);
 		void	ComLynxRxData(int data);
 		void	ComLynxTxLoopback(int data);
-		void	ComLynxTxCallback(void (*function)(int data,ULONG objref),ULONG objref);
+		void	ComLynxTxCallback(void (*function)(int data,UOBJREF objref),UOBJREF objref);
 		
-		void	DisplaySetAttributes(ULONG Rotate, ULONG Format, ULONG Pitch, UBYTE* (*DisplayCallback)(ULONG objref),ULONG objref);
+		void	DisplaySetAttributes(ULONG Rotate, ULONG Format, ULONG Pitch, UBYTE* (*DisplayCallback)(UOBJREF objref),UOBJREF objref);
 		
 		void	BlowOut(void);
 
@@ -215,7 +215,7 @@ class CMikie : public CLynxBase
 
 		inline void	Update(void)
 		{
-			SLONG divide;
+			SLONG divide=0;		// carried between timers; 0 until first clocked-mode timer sets it
 			SLONG decval;
 			ULONG tmp;
 			ULONG mikie_work_done=0;
@@ -526,7 +526,7 @@ class CMikie : public CLynxBase
 							if(mUART_Rx_waiting>0)
 							{
 								mUART_RX_DATA=mUART_Rx_input_queue[mUART_Rx_output_ptr];
-								mUART_Rx_output_ptr=(++mUART_Rx_output_ptr)%UART_MAX_RX_QUEUE;
+								mUART_Rx_output_ptr=(mUART_Rx_output_ptr+1)%UART_MAX_RX_QUEUE;
 								mUART_Rx_waiting--;
 								TRACE_MIKIE2("Update() - RX Byte output ptr=%02d waiting=%02d",mUART_Rx_output_ptr,mUART_Rx_waiting);
 							}
@@ -1733,8 +1733,8 @@ class CMikie : public CLynxBase
 		ULONG		mUART_PARITY_EVEN;
 
 		int			mUART_CABLE_PRESENT;
-		void		(*mpUART_TX_CALLBACK)(int data,ULONG objref);
-		ULONG		mUART_TX_CALLBACK_OBJECT;
+		void		(*mpUART_TX_CALLBACK)(int data,UOBJREF objref);
+		UOBJREF		mUART_TX_CALLBACK_OBJECT;
 
 		int			mUART_Rx_input_queue[UART_MAX_RX_QUEUE];
 		unsigned int mUART_Rx_input_ptr;
@@ -1757,8 +1757,8 @@ class CMikie : public CLynxBase
 		ULONG		mDisplayRotate;
 		ULONG		mDisplayFormat;
 		ULONG		mDisplayPitch;
-		UBYTE*		(*mpDisplayCallback)(ULONG objref);
-		ULONG		mDisplayCallbackObject;
+		UBYTE*		(*mpDisplayCallback)(UOBJREF objref);
+		UOBJREF		mDisplayCallbackObject;
 };
 
 

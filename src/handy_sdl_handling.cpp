@@ -68,7 +68,6 @@
 
 int  handy_sdl_on_key_down(SDL_KeyboardEvent key, int mask)
 {
-	Sint16 x_move = 0, y_move = 0;
 	
 /*    
     if(joy) {
@@ -169,7 +168,6 @@ int  handy_sdl_on_key_down(SDL_KeyboardEvent key, int mask)
 
 int  handy_sdl_on_key_up(SDL_KeyboardEvent key, int mask)
 {
-	Sint16 x_move = 0, y_move = 0;
 	
 //  Uint8 *keystate = SDL_GetKeyState(NULL); // First to initialize the keystates
 //	int mod = SDL_GetModState();

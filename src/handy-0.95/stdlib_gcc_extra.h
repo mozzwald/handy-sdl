@@ -22,10 +22,12 @@ void _splitpath(const char* Path,char* Drive,char* Directory,char* Filename,char
   int Last = 0; 
   int Rest = 0; 
 
-  // no drives available in linux . 
-  // extensions are not common in linux 
-  // but considered anyway 
-  Drive = NULL; 
+  // no drives available in linux .
+  // extensions are not common in linux
+  // but considered anyway
+  // NOTE: this used to assign the local pointer (Drive = NULL), which left the
+  // caller's buffer uninitialized. Callers strcpy() from it, so return "".
+  if(Drive != NULL) *Drive = '\0';
 
   while(*CopyOfPath != '\0') 
     { 
@@ -44,16 +46,21 @@ void _splitpath(const char* Path,char* Drive,char* Directory,char* Filename,char
       else 
           Rest = Counter - Last; 
     } 
-  // directory is the first part of the path until the 
-  // last slash appears 
-  strncpy(Directory,Path,Last); 
-  // strncpy doesnt add a '\0' 
-  Directory[Last] = '\0'; 
-  // Filename is the part behind the last slahs 
-  strcpy(Filename,CopyOfPath -= Rest); 
-  // get extension if there is any 
-  while(*Filename != '\0') 
-  { 
+  // directory is the first part of the path until the
+  // last slash appears
+  if(Directory != NULL)
+  {
+    strncpy(Directory,Path,Last);
+    // strncpy doesnt add a '\0'
+    Directory[Last] = '\0';
+  }
+  // Filename is the part behind the last slahs
+  CopyOfPath -= Rest;
+  if(Filename == NULL) return;
+  strcpy(Filename,CopyOfPath);
+  // get extension if there is any
+  while(*Filename != '\0' && Extension != NULL)
+  {
     // the part behind the point is called extension in windows systems 
     // at least that is what i thought apperantly the '.' is used as part 
     // of the extension too . 
@@ -66,12 +73,12 @@ void _splitpath(const char* Path,char* Drive,char* Directory,char* Filename,char
           Filename++; 
         } 
       } 
-      if(*Filename != '\0') 
-        {Filename++;} 
-  } 
-  *Extension = '\0'; 
-  return; 
-} 
+      if(*Filename != '\0')
+        {Filename++;}
+  }
+  if(Extension != NULL) *Extension = '\0';
+  return;
+}
 
 
 // Abstract:   Make a path out of its parts 
@@ -121,11 +128,10 @@ void _makepath(char* Path,const char* Drive,const char* Directory,const char* Fi
 //             The actual process and not for a forked one which would be true 
 //             for system("cd DIR"); 
 
-int _chdir(const char* Directory) 
-{ 
-  chdir(Directory); 
-  return 0; 
-} 
+int _chdir(const char* Directory)
+{
+  return (chdir(Directory)==0)?0:-1;
+}
 
 
 #endif

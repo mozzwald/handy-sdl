@@ -162,7 +162,7 @@ local int unzlocal_getShort (fin,pX)
     uLong *pX;
 {
     uLong x ;
-    int i;
+    int i = 0;
     int err;
 
     err = unzlocal_getByte(fin,&i);
@@ -184,7 +184,7 @@ local int unzlocal_getLong (fin,pX)
     uLong *pX;
 {
     uLong x ;
-    int i;
+    int i = 0;
     int err;
 
     err = unzlocal_getByte(fin,&i);
@@ -447,7 +447,9 @@ extern int ZEXPORT unzClose (file)
 	s=(unz_s*)file;
 
     if (s->pfile_in_zip_read!=NULL)
+    {
         unzCloseCurrentFile(file);
+    }
 
 	fclose(s->file);
 	TRYFREE(s);
@@ -771,7 +773,9 @@ extern int ZEXPORT unzLocateFile (file, szFileName, iCaseSensitivity)
 		return UNZ_PARAMERROR;
 
     if (strlen(szFileName)>=UNZ_MAXFILENAMEINZIP)
+    {
         return UNZ_PARAMERROR;
+    }
 
 	s=(unz_s*)file;
 	if (!s->current_file_ok)
@@ -853,7 +857,9 @@ local int unzlocal_CheckCurrentFileCoherencyHeader (s,piSizeVar,
 
     if ((err==UNZ_OK) && (s->cur_file_info.compression_method!=0) &&
                          (s->cur_file_info.compression_method!=Z_DEFLATED))
+    {
         err=UNZ_BADZIPFILE;
+    }
 
 	if (unzlocal_getLong(s->file,&uData) != UNZ_OK) /* date/time */
 		err=UNZ_ERRNO;
@@ -917,7 +923,9 @@ extern int ZEXPORT unzOpenCurrentFile (file)
 		return UNZ_PARAMERROR;
 
     if (s->pfile_in_zip_read != NULL)
+    {
         unzCloseCurrentFile(file);
+    }
 
 	if (unzlocal_CheckCurrentFileCoherencyHeader(s,&iSizeVar,
 				&offset_local_extrafield,&size_local_extrafield)!=UNZ_OK)

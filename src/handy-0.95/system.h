@@ -52,8 +52,11 @@
 #endif
 
 
+// MSVC-only inlining hints; GCC/Clang tune this via -O.
+#ifdef _MSC_VER
 #pragma inline_depth (255)
 #pragma inline_recursion (on)
+#endif
 
 #ifdef _LYNXDBG
 
@@ -188,14 +191,14 @@ class CSystem;
 class CSystem : public CSystemBase
 {
 	public:
-		CSystem(char* gamefile,char* romfile);
+		CSystem(const char* gamefile,const char* romfile);
 		~CSystem();
 
 	public:
 		void	Reset(void);
-		bool	ContextSave(char *context);
-		bool	ContextLoad(char *context);
-		bool	IsZip(char *filename);
+		bool	ContextSave(const char *context);
+		bool	ContextLoad(const char *context);
+		bool	IsZip(const char *filename);
 
 		inline void Update(void)
 		{
@@ -282,11 +285,11 @@ class CSystem : public CSystemBase
 
 // Mikey system interfacing
 
-		void	DisplaySetAttributes(ULONG Rotate,ULONG Format,ULONG Pitch,UBYTE* (*DisplayCallback)(ULONG objref),ULONG objref) { mMikie->DisplaySetAttributes(Rotate,Format,Pitch,DisplayCallback,objref); };
+		void	DisplaySetAttributes(ULONG Rotate,ULONG Format,ULONG Pitch,UBYTE* (*DisplayCallback)(UOBJREF objref),UOBJREF objref) { mMikie->DisplaySetAttributes(Rotate,Format,Pitch,DisplayCallback,objref); };
 
 		void	ComLynxCable(int status) { mMikie->ComLynxCable(status); };
 		void	ComLynxRxData(int data)  { mMikie->ComLynxRxData(data); };
-		void	ComLynxTxCallback(void (*function)(int data,ULONG objref),ULONG objref) { mMikie->ComLynxTxCallback(function,objref); };
+		void	ComLynxTxCallback(void (*function)(int data,UOBJREF objref),UOBJREF objref) { mMikie->ComLynxTxCallback(function,objref); };
 
 // Suzy system interfacing
 
@@ -301,9 +304,9 @@ class CSystem : public CSystemBase
 #ifdef _LYNXDBG
 		void	DebugTrace(int address);
 
-		void	DebugSetCallback(void (*function)(ULONG objref, char *message),ULONG objref);
+		void	DebugSetCallback(void (*function)(UOBJREF objref, char *message),UOBJREF objref);
 
-		void	(*mpDebugCallback)(ULONG objref, char *message);
+		void	(*mpDebugCallback)(UOBJREF objref, char *message);
 		ULONG	mDebugCallbackObject;
 #endif
 

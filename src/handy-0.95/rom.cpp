@@ -55,10 +55,11 @@
 
 extern CErrorInterface *gError;
 
-CRom::CRom(char *romfile)
+CRom::CRom(const char *romfile)
 {
 	mWriteEnable=FALSE;
-	strncpy(mFileName,romfile,1024);
+	strncpy(mFileName,romfile,sizeof(mFileName)-1);
+	mFileName[sizeof(mFileName)-1]='\0';
 	Reset();
 
 	// Initialise ROM

@@ -75,6 +75,7 @@
 // Opcode execution 
 //
 
+/*
 //#define	xADC()\
 //{\
 //	UBYTE	value=CPU_PEEK(mOperand);\
@@ -97,6 +98,7 @@
 //		mV=((oldA^mA)&0x80) && ((mA^value)&0x80);\
 //	}\
 //}
+*/
 
 #define xADC()\
 {\
@@ -215,6 +217,7 @@
 	}\
 }
 
+/*
 //
 // DONT USE THIS VERSION OF BIT, IT BREAKS CALGAMES TITLE SCREEN !!!!
 //
@@ -226,6 +229,7 @@
 //	mN=value&0x80;\
 //	mV=value&0x40;\
 //}
+*/
 
 #define	xBMI()\
 {\
@@ -283,6 +287,7 @@
 	mPC&=0xffff;\
 }
 
+/*
 //#define	xBRK()\
 //{\
 //	mPC++;\
@@ -295,6 +300,7 @@
 //\
 //	mPC=CPU_PEEKW(IRQ_VECTOR);\
 //}
+*/
 #define	xBRK()\
 {\
 	mPC++;\
@@ -361,6 +367,7 @@
 	mV=FALSE;\
 }
 
+/*
 //
 // Alternate CMP code
 //
@@ -390,13 +397,16 @@
 //	mZ=!value;\
 //	mN=value&0x0080;\
 //}
+*/
 
+/*
 //#define	xCMP()\
 //{\
 //	UWORD value=(UWORD)mA-CPU_PEEK(mOperand);\
 //	SET_NZ(value);\
 //	mC=!(value&0x0100);\
 //}
+*/
 #define	xCMP()\
 {\
 	int value=CPU_PEEK(mOperand);\
@@ -405,12 +415,14 @@
 	SET_NZ((UBYTE)(mA - value))\
 }
 
+/*
 //#define	xCPX()\
 //{\
 //	UWORD value=(UWORD)mX-CPU_PEEK(mOperand);\
 //	SET_NZ(value);\
 //	mC=!(value&0x0100);\
 //}
+*/
 #define	xCPX()\
 {\
 	int value=CPU_PEEK(mOperand);\
@@ -419,12 +431,14 @@
 	SET_NZ((UBYTE)(mX - value))\
 }
 
+/*
 //#define	xCPY()\
 //{\
 //	UWORD value=(UWORD)mY-CPU_PEEK(mOperand);\
 //	SET_NZ(value);\
 //	mC=!(value&0x0100);\
 //}
+*/
 #define	xCPY()\
 {\
 	int value=CPU_PEEK(mOperand);\
@@ -657,6 +671,7 @@
 	mPC++;\
 }
 
+/*
 //#define	xSBC()\
 //{\
 //	UBYTE oldA=mA;\
@@ -681,6 +696,7 @@
 //		SET_NZ(mA);\
 //	}\
 //}
+*/
 
 #define	xSBC()\
 {\
@@ -772,6 +788,7 @@
 	value=value&(mA^0xff);\
 	CPU_POKE(mOperand,value);\
 }
+/*
 //
 // THE COMMENTED OUT CODE IS DERIVED FROM THE MAME 65C02 MODEL AND
 // LOOKS TO BE INCORRECT i.e When plugged into Handy things stop working
@@ -783,6 +800,7 @@
 //	SET_NZ(value);\
 //	CPU_POKE(mOperand,value);\
 //}
+*/
 
 #define	xTSB()\
 {\
@@ -791,6 +809,7 @@
 	value=value|mA;\
 	CPU_POKE(mOperand,value);\
 }
+/*
 //
 // THE COMMENTED OUT CODE IS DERIVED FROM THE MAME 65C02 MODEL AND
 // LOOKS TO BE INCORRECT i.e When plugged into Handy things stop working
@@ -802,6 +821,7 @@
 //	SET_NZ(value);\
 //	CPU_POKE(mOperand,value);\
 //}
+*/
 
 #define	xTSX()\
 {\

@@ -34,20 +34,8 @@
 
 #define RGB(r,g,b) ((r)>>3) << systemRedShift | ((g) >> 3) << systemGreenShift | ((b) >> 3) << systemBlueShift
 
-static u8 row_cur[3*322];
-static u8 row_next[3*322];
-static u8 *rgb_row_cur = row_cur;
-static u8 *rgb_row_next = row_next;
-
-static u32 colorMask = 0xF7DEF7DE;
-static u32 lowPixelMask = 0x08210821;
-static u32 qcolorMask = 0xE79CE79C;
-static u32 qlowpixelMask = 0x18631863;
-static u32 redblueMask = 0xF81F;
-static u32 greenMask = 0x7E0;
-
-static int systemColorDepth  = 16;
-static int RGB_LOW_BITS_MASK = 0x821;
+// The pixel-format state below lives in sdlemu_filter.cpp; it used to be
+// defined here, which gave every including TU its own unused copy.
 extern int systemRedShift;
 extern int systemBlueShift;
 extern int systemGreenShift;

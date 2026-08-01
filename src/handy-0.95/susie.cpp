@@ -569,7 +569,6 @@ ULONG CSusie::PaintSprites(void)
 
 			cycles_used+=6*SPR_RDWR_CYC;
 
-			bool enable_sizing=FALSE;
 			bool enable_stretch=FALSE;
 			bool enable_tilt=FALSE;
 		
@@ -580,7 +579,6 @@ ULONG CSusie::PaintSprites(void)
 			{
 				case 1:
 					TRACE_SUSIE0("PaintSprites() Sizing Enabled");
-					enable_sizing=TRUE;
 
 					mSPRHSIZ.Word=RAM_PEEKW(mTMPADR.Word);	// Sprite Horizontal size
 					mTMPADR.Word+=2;
@@ -594,7 +592,6 @@ ULONG CSusie::PaintSprites(void)
 				case 2:
 					TRACE_SUSIE0("PaintSprites() Sizing Enabled");
 					TRACE_SUSIE0("PaintSprites() Stretch Enabled");
-					enable_sizing=TRUE;
 					enable_stretch=TRUE;
 
 					mSPRHSIZ.Word=RAM_PEEKW(mTMPADR.Word);	// Sprite Horizontal size
@@ -613,7 +610,6 @@ ULONG CSusie::PaintSprites(void)
 					TRACE_SUSIE0("PaintSprites() Sizing Enabled");
 					TRACE_SUSIE0("PaintSprites() Stretch Enabled");
 					TRACE_SUSIE0("PaintSprites() Tilt Enabled");
-					enable_sizing=TRUE;
 					enable_stretch=TRUE;
 					enable_tilt=TRUE;
 
@@ -890,7 +886,8 @@ ULONG CSusie::PaintSprites(void)
 										if(hoff>=0 && hoff<SCREEN_WIDTH)
 										{
 											ProcessPixel(hoff,pixel);
-											onscreen=everonscreen=TRUE;
+											everonscreen=TRUE;
+											onscreen=TRUE;
 										}
 										else
 										{

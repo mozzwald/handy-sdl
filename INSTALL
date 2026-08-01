@@ -27,8 +27,10 @@ If you sure you have the minimum software requirements, you can compile
 Handy/SDL by issuing the following command in the directory where you
 decompressed the source:
 
-- Handy/SDL v0.5 using Handy v0.90 sourcebase: make -f Makefile-0.90
-- Handy/SDL v0.5 using Handy v0.95 sourcebase: make -f Makefile-0.95
+	make
+
+This builds Handy/SDL v0.5 on the Handy v0.95 sourcebase. (The v0.90
+sourcebase and its separate makefile have been removed.)
 
 Optionally you can manually strip handy_sdl[.exe] to downsize the binary. If you have
 upx in your path somewhere, you can uncomment the line in the makefile that

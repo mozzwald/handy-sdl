@@ -22,12 +22,12 @@
 #include "SDL.h"
 #include "sdlemu_system.h"
 
-SDL_Overlay	    *overlay;
-SDL_Rect         overlay_rect;
-
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+extern SDL_Overlay  *overlay;
+extern SDL_Rect      overlay_rect;
 
 void sdlemu_init_overlay(SDL_Surface *dst, int overlaytype, int width, int height);
 void sdlemu_close_overlay(void);

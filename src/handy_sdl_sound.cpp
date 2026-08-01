@@ -122,7 +122,6 @@ int handy_sdl_audio_init(void)
 {
 	SDL_AudioSpec 	*desired;
 	SDL_AudioSpec	*obtained;
-	SDL_AudioSpec 	*hardware_spec;
 
 #ifdef HANDY_SDL_DEBUG
 	printf("handy_sdl_audio_init - DEBUG\n");
@@ -152,7 +151,6 @@ int handy_sdl_audio_init(void)
     }
 
 	free(desired);
-	hardware_spec=obtained;
 	
 	/* Enable SDL audio */
   	SDL_PauseAudio(0);

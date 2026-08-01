@@ -55,8 +55,13 @@ typedef signed short SWORD;
 typedef unsigned short UWORD;
 
 // Longs should be 32-bits wide
-typedef signed long SLONG;
-typedef unsigned long ULONG;
+typedef signed int SLONG;
+typedef unsigned int ULONG;
+
+// Callback "objref" values actually carry host pointers, so they need to be
+// pointer sized rather than 32 bits (breaks on LP64 otherwise).
+#include <stdint.h>
+typedef uintptr_t UOBJREF;
 
 // Read/Write Cycle definitions
 #define CPU_RDWR_CYC	5

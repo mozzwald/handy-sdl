@@ -1,0 +1,6 @@
+# Build artifacts
+obj/
+handy_sdl
+
+# Copyrighted Lynx boot ROM - must be supplied by the user, never committed
+lynxboot.img

@@ -314,7 +314,7 @@ int main(int argc, char *argv[])
 	int			accel = 1;  // OpenGL Hardware accel (default on)
 	int         sync  = 0;  // OpenGL VSYNC (default off)
 	int			overlay = 1; // YUV Overlay format
-	char        overlaytype[4];   // Overlay Format
+	char        overlaytype[8];   // Overlay Format
 
 	gAudioEnabled = TRUE;
 

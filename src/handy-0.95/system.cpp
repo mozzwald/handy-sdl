@@ -82,7 +82,7 @@ int lss_read(void* dest,int varsize, int varcount,LSS_FILE *fp)
 	return copysize;
 }
 
-CSystem::CSystem(char* gamefile,char* romfile)
+CSystem::CSystem(const char* gamefile,const char* romfile)
 	:mCart(NULL),
 	mRom(NULL),
 	mMemMap(NULL),
@@ -177,7 +177,7 @@ CSystem::CSystem(char* gamefile,char* romfile)
 					{
 						unzCloseCurrentFile(fp);
 						unzClose(fp);
-						delete filememory;
+						delete[] filememory;
 						// Throw a wobbly
 						CLynxException lynxerr;
 						lynxerr.Message() << "Handy Error: ZIP File load problems" ;
@@ -240,7 +240,7 @@ CSystem::CSystem(char* gamefile,char* romfile)
 		if(fread(filememory,sizeof(char),filesize,fp)!=filesize)
 		{
 			CLynxException lynxerr;
-			delete filememory;
+			delete[] filememory;
 
 			lynxerr.Message() << "Handy Error: Unspecified Load error (Header)";
 			lynxerr.Description()
@@ -267,7 +267,7 @@ CSystem::CSystem(char* gamefile,char* romfile)
 		else
 		{
 			CLynxException lynxerr;
-			delete filememory;
+			delete[] filememory;
 			mFileType=HANDY_FILETYPE_ILLEGAL;
 			lynxerr.Message() << "Handy Error: File format invalid!";
 			lynxerr.Description()
@@ -305,7 +305,7 @@ CSystem::CSystem(char* gamefile,char* romfile)
 				if((fp=fopen(cartgo,"rb"))==NULL)
 				{
 					CLynxException lynxerr;
-					delete filememory;
+					delete[] filememory;
 					lynxerr.Message() << "Handy Error: Howard.o File Open Error";
 					lynxerr.Description()
 						<< "Headerless cartridges need howard.o bootfile to ." << endl
@@ -322,8 +322,8 @@ CSystem::CSystem(char* gamefile,char* romfile)
 				if(fread(howardmemory,sizeof(char),howardsize,fp)!=howardsize)
 				{
 					CLynxException lynxerr;
-					delete filememory;
-					delete howardmemory;
+					delete[] filememory;
+					delete[] howardmemory;
 					lynxerr.Message() << "Handy Error: Howard.o load error (Header)";
 					lynxerr.Description()
 						<< "Howard.o could not be read????." << endl;
@@ -385,8 +385,8 @@ CSystem::CSystem(char* gamefile,char* romfile)
 			throw(lynxerr);
 		}
 	}
-	if(filesize) delete filememory;
-	if(howardsize) delete howardmemory;
+	if(filesize) delete[] filememory;
+	if(howardsize) delete[] howardmemory;
 }
 
 CSystem::~CSystem()
@@ -402,16 +402,16 @@ CSystem::~CSystem()
 	if(mMemMap!=NULL) delete mMemMap;
 }
 
-bool CSystem::IsZip(char *filename)
+bool CSystem::IsZip(const char *filename)
 {
 	UBYTE buf[2];
 	FILE *fp;
 
 	if((fp=fopen(filename,"rb"))!=NULL)
 	{
-		fread(buf, 2, 1, fp);
+		size_t got=fread(buf, 2, 1, fp);
 		fclose(fp);
-		return(memcmp(buf,"PK",2)==0);
+		return(got==1 && memcmp(buf,"PK",2)==0);
 	}
 	if(fp)fclose(fp);
 	return FALSE;
@@ -464,7 +464,7 @@ void CSystem::Reset(void)
 	}
 }
 
-bool CSystem::ContextSave(char *context)
+bool CSystem::ContextSave(const char *context)
 {
 	FILE *fp;
 	bool status=1;
@@ -517,7 +517,7 @@ bool CSystem::ContextSave(char *context)
 }
 
 			 
-bool CSystem::ContextLoad(char *context)
+bool CSystem::ContextLoad(const char *context)
 {
 	LSS_FILE *fp;
 	bool status=1;
@@ -589,7 +589,7 @@ bool CSystem::ContextLoad(char *context)
 					{
 						unzCloseCurrentFile(fp);
 						unzClose(fp);
-						delete filememory;
+						delete[] filememory;
 						// Throw a wobbly
 						gError->Warning("ContextLoad(): ZIP File load problems, could not read data from the zip file");
 						return 1;
@@ -659,7 +659,7 @@ bool CSystem::ContextLoad(char *context)
 			if(mCart->CRC32()!=checksum)
 			{
 				delete fp;
-				delete filememory;
+				delete[] filememory;
 				gError->Warning("LSS Snapshot CRC does not match the loaded cartridge image, aborting load");
 				return 0;
 			}
@@ -717,7 +717,7 @@ bool CSystem::ContextLoad(char *context)
 	}
 
 	delete fp;
-	delete filememory;
+	delete[] filememory;
 
 	return status;
 }

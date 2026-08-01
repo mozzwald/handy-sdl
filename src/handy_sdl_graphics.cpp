@@ -87,7 +87,6 @@ int handy_sdl_video_setup(int rendertype, int fsaa, int fullscreen, int bpp, int
 {
 	const	SDL_VideoInfo 	*info;
 			Uint32			 videoflags;
-			int 			 value;
 			int				 sdl_bpp_flag;
 			int				 surfacewidth;
 			int				 surfaceheight;
@@ -101,6 +100,7 @@ int handy_sdl_video_setup(int rendertype, int fsaa, int fullscreen, int bpp, int
 	//
 	// This is really ugly but good enough for a first version :)
 	switch(LynxRotate) {
+		default:				// unknown rotation: fall back to unrotated
 		case MIKIE_NO_ROTATE:
 			LynxWidth  = 160;
 			LynxHeight = 102;
@@ -431,7 +431,7 @@ void handy_sdl_video_init(int bpp)
 
 	mpLynxBuffer = (Uint32 *)malloc(LynxWidth*LynxHeight*sizeof(Uint32)*4);
 	//memset(HandyBuffer->pixels, 0, HandyBuffer->pitch * HandyBuffer->h);
-	mpLynx->DisplaySetAttributes( LynxRotate, LynxFormat, (ULONG)HandyBuffer->pitch, handy_sdl_display_callback, (ULONG)mpLynxBuffer);
+	mpLynx->DisplaySetAttributes( LynxRotate, LynxFormat, (ULONG)HandyBuffer->pitch, handy_sdl_display_callback, (UOBJREF)mpLynxBuffer);
 
 	printf("[DONE]\n");
 }
@@ -447,9 +447,8 @@ void handy_sdl_video_init(int bpp)
 	Information			:	Renders the graphics from HandyBuffer to
 							the main surface.
 */
-UBYTE *handy_sdl_display_callback(ULONG objref)
+UBYTE *handy_sdl_display_callback(UOBJREF objref)
 {
-	int filter =  1;
 
 
 	// Time to render the contents of mLynxBuffer to the SDL gfxBuffer.

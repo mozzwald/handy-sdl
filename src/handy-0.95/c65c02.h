@@ -198,7 +198,7 @@ class C65C02
 		inline bool ContextSave(FILE *fp)
 		{	
 			TRACE_CPU0("ContextSave()");
-			int mPS;
+			ULONG mPS;
 			mPS=PS();
 			if(!fprintf(fp,"C6502::ContextSave")) return 0;
 			if(!fwrite(&mA,sizeof(ULONG),1,fp)) return 0;
@@ -214,7 +214,7 @@ class C65C02
 		inline bool ContextLoad(LSS_FILE *fp)
 		{
 			TRACE_CPU0("ContextLoad()");
-			int mPS;
+			ULONG mPS;
 			char teststr[100]="XXXXXXXXXXXXXXXXXX";
 			if(!lss_read(teststr,sizeof(char),18,fp)) return 0;
 			if(strcmp(teststr,"C6502::ContextSave")!=0) return 0;

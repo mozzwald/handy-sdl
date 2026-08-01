@@ -801,7 +801,7 @@ void CMikie::ComLynxRxData(int data)
 
 		// Receive the byte
 		mUART_Rx_input_queue[mUART_Rx_input_ptr]=data;
-		mUART_Rx_input_ptr=(++mUART_Rx_input_ptr)%UART_MAX_RX_QUEUE;
+		mUART_Rx_input_ptr=(mUART_Rx_input_ptr+1)%UART_MAX_RX_QUEUE;
 		mUART_Rx_waiting++;
 		TRACE_MIKIE2("ComLynxRxData() - input ptr=%02d waiting=%02d",mUART_Rx_input_ptr,mUART_Rx_waiting);
 	}
@@ -822,7 +822,7 @@ void CMikie::ComLynxTxLoopback(int data)
 		if(!mUART_Rx_waiting) mUART_RX_COUNTDOWN=UART_RX_TIME_PERIOD;
 
 		// Receive the byte - INSERT into front of queue
-		mUART_Rx_output_ptr=(--mUART_Rx_output_ptr)%UART_MAX_RX_QUEUE;
+		mUART_Rx_output_ptr=(mUART_Rx_output_ptr+UART_MAX_RX_QUEUE-1)%UART_MAX_RX_QUEUE;
 		mUART_Rx_input_queue[mUART_Rx_output_ptr]=data;
 		mUART_Rx_waiting++;
 		TRACE_MIKIE2("ComLynxTxLoopback() - input ptr=%02d waiting=%02d",mUART_Rx_input_ptr,mUART_Rx_waiting);
@@ -833,14 +833,14 @@ void CMikie::ComLynxTxLoopback(int data)
 	}
 }
 
-void CMikie::ComLynxTxCallback(void (*function)(int data,ULONG objref),ULONG objref)
+void CMikie::ComLynxTxCallback(void (*function)(int data,UOBJREF objref),UOBJREF objref)
 {
 	mpUART_TX_CALLBACK=function;
 	mUART_TX_CALLBACK_OBJECT=objref;
 }
 
 
-void CMikie::DisplaySetAttributes(ULONG Rotate,ULONG Format,ULONG Pitch,UBYTE* (*RenderCallback)(ULONG objref),ULONG objref)
+void CMikie::DisplaySetAttributes(ULONG Rotate,ULONG Format,ULONG Pitch,UBYTE* (*RenderCallback)(UOBJREF objref),UOBJREF objref)
 {
 	mDisplayRotate=Rotate;
 	mDisplayFormat=Format;
