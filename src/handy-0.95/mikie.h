@@ -98,9 +98,19 @@ class CSystem;
 #define UART_RX_INACTIVE	0x80000000
 #define UART_BREAK_CODE		0x00008000
 #define	UART_MAX_RX_QUEUE	32
-#define UART_TX_TIME_PERIOD	(11)
-#define UART_RX_TIME_PERIOD	(11)
-#define UART_RX_NEXT_DELAY	(44)
+// One Timer 4 borrow-out is one bit period (see the "8 clocks per bit"
+// divide in Update()), so a ComLynx frame - start bit, 8 data, parity and
+// stop - occupies 11 of them, and back to back frames on the wire are 11
+// bit periods apart.
+#define UART_BITS_PER_FRAME	(11)
+// A countdown is only seen as expired on the tick *after* it is decremented
+// to zero, so reloading with N spans N+1 bit periods. Reload one short.
+#define UART_TX_TIME_PERIOD	(UART_BITS_PER_FRAME-1)
+#define UART_RX_TIME_PERIOD	(UART_BITS_PER_FRAME-1)
+// Idle inserted between queued Rx frames on top of the frame time. Real
+// ComLynx has none. This was 44, which paced receive at a fifth of the wire
+// rate; restore some slack here if a cart turns out to need it.
+#define UART_RX_NEXT_DELAY	(0)
 
 typedef struct
 {
