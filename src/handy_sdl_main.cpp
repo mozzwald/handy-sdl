@@ -387,6 +387,11 @@ int main(int argc, char *argv[])
 		if (!strcmp(argv[i], "-comlynxnorxgate"))	gComLynxRxGate = 0;
 	}
 
+	// The command line has had its say. Remember where that left things, so
+	// that a flag passed for one run does not get written back as a setting.
+	handy_sdl_config_note_startup(LynxScale, Fullscreen, Smoothing, IntegerScale,
+	                              Throttle, gAudioEnabled ? 1 : 0, framecounter);
+
 	// Initalising SDL for Audio and Video support
 	printf("Initialising SDL...           ");
 	if (SDL_Init(SDL_INIT_AUDIO|SDL_INIT_VIDEO) < 0) {

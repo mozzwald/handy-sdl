@@ -29,6 +29,29 @@ static std::vector<CFG_ENTRY>	entries;
 static std::string				cfg_path;
 static std::string				cfg_dir;
 
+//
+// A command line flag is an instruction for the run that used it, not a new
+// preference. Passing -comlynx listen:9999 once should not silently become the
+// stored port. So keep two snapshots: what the file said, and what startup
+// settled on once the flags had been applied. At save time a value that still
+// matches the startup snapshot was never touched by the user, and the stored
+// value is written back instead of the flag's.
+//
+static int	stored_scale=-1, stored_fullscreen=-1, stored_smooth=-1, stored_integer=-1;
+static int	stored_throttle=-1, stored_sound=-1, stored_fps=-1;
+static int	base_scale=-1, base_fullscreen=-1, base_smooth=-1, base_integer=-1;
+static int	base_throttle=-1, base_sound=-1, base_fps=-1;
+
+static int			stored_cl_mode=HANDY_COMLYNX_OFF, stored_cl_port=8100, stored_cl_autostart=0;
+static std::string	stored_cl_host="127.0.0.1";
+static int			base_cl_mode=-1, base_cl_port=-1;
+static std::string	base_cl_host;
+
+static int settle(int current, int baseline, int stored)
+{
+	return (current==baseline) ? stored : current;
+}
+
 
 static void handy_sdl_config_locate(void)
 {
@@ -101,6 +124,14 @@ void handy_sdl_config_get_video(int *scale, int *fullscreen, int *smooth, int *i
 	cfg_get_int("video.fullscreen",    fullscreen);
 	cfg_get_int("video.smooth",        smooth);
 	cfg_get_int("video.integer_scale", integer_scale);
+
+	// Whatever the caller ends up with here is what the file had to say, or the
+	// built-in default when it said nothing. Either way it is the value a flag
+	// must not overwrite permanently.
+	stored_scale      = scale         ? *scale         : -1;
+	stored_fullscreen = fullscreen    ? *fullscreen    : -1;
+	stored_smooth     = smooth        ? *smooth        : -1;
+	stored_integer    = integer_scale ? *integer_scale : -1;
 }
 
 void handy_sdl_config_get_emulation(int *throttle, int *sound, int *fps)
@@ -108,6 +139,22 @@ void handy_sdl_config_get_emulation(int *throttle, int *sound, int *fps)
 	cfg_get_int("emu.throttle", throttle);
 	cfg_get_int("emu.sound",    sound);
 	cfg_get_int("emu.fps",      fps);
+
+	stored_throttle = throttle ? *throttle : -1;
+	stored_sound    = sound    ? *sound    : -1;
+	stored_fps      = fps      ? *fps      : -1;
+}
+
+void handy_sdl_config_note_startup(int scale, int fullscreen, int smooth, int integer_scale,
+                                   int throttle, int sound, int fps)
+{
+	base_scale      = scale;
+	base_fullscreen = fullscreen;
+	base_smooth     = smooth;
+	base_integer    = integer_scale;
+	base_throttle   = throttle;
+	base_sound      = sound;
+	base_fps        = fps;
 }
 
 // Bindings are keyed on a tidied-up button name: "Option 1" becomes "option1".
@@ -154,16 +201,11 @@ void handy_sdl_config_apply_input(void)
 
 void handy_sdl_config_apply_comlynx(void)
 {
-	// -comlynx beats the stored settings outright, both for what it asks for
-	// and for the decision to bring the link up at all.
-	if(handy_sdl_comlynx_cli_requested()) return;
-
 	const char *m = cfg_get("comlynx.mode");
-	if(m == NULL) return;
 
 	int mode = HANDY_COMLYNX_OFF;
-	if(!strcmp(m, "listen"))       mode = HANDY_COMLYNX_LISTEN;
-	else if(!strcmp(m, "connect")) mode = HANDY_COMLYNX_CONNECT;
+	if(m && !strcmp(m, "listen"))       mode = HANDY_COMLYNX_LISTEN;
+	else if(m && !strcmp(m, "connect")) mode = HANDY_COMLYNX_CONNECT;
 
 	const char *host = cfg_get("comlynx.host");
 	int port = 8100;
@@ -171,6 +213,21 @@ void handy_sdl_config_apply_comlynx(void)
 
 	int autostart = 0;
 	cfg_get_int("comlynx.autostart", &autostart);
+
+	// Remember what the file held even when the command line is about to win,
+	// so a one-off -comlynx does not get written back as the new setting.
+	stored_cl_mode      = mode;
+	stored_cl_host      = host ? host : "127.0.0.1";
+	stored_cl_port      = port;
+	stored_cl_autostart = autostart;
+
+	// -comlynx beats the stored settings outright, both for what it asks for
+	// and for the decision to bring the link up at all.
+	if(handy_sdl_comlynx_cli_requested() || m == NULL)
+	{
+		handy_sdl_config_note_startup_comlynx();
+		return;
+	}
 
 	// Seed the settings either way, so the panel opens pre-filled. Only bring
 	// the link up when it was running the last time settings were saved -
@@ -184,6 +241,18 @@ void handy_sdl_config_apply_comlynx(void)
 	{
 		handy_sdl_comlynx_set_config(mode, host ? host : "127.0.0.1", port);
 	}
+
+	handy_sdl_config_note_startup_comlynx();
+}
+
+void handy_sdl_config_note_startup_comlynx(void)
+{
+	int mode = 0, port = 0;
+	char host[256];
+	handy_sdl_comlynx_get_config(&mode, host, sizeof(host), &port);
+	base_cl_mode = mode;
+	base_cl_host = host;
+	base_cl_port = port;
 }
 
 void handy_sdl_config_apply_gui(void)
@@ -221,13 +290,16 @@ void handy_sdl_config_save(void)
 
 	fprintf(fp, "# Handy/SDL settings. Command line options override these.\n\n");
 
-	fprintf(fp, "video.scale=%d\n",         handy_sdl_get_window_scale());
-	fprintf(fp, "video.fullscreen=%d\n",    handy_sdl_get_fullscreen());
-	fprintf(fp, "video.smooth=%d\n",        handy_sdl_get_smoothing());
-	fprintf(fp, "video.integer_scale=%d\n", handy_sdl_get_integer_scale());
-	fprintf(fp, "emu.throttle=%d\n",        handy_sdl_get_throttle());
-	fprintf(fp, "emu.sound=%d\n",           gAudioEnabled ? 1 : 0);
-	fprintf(fp, "emu.fps=%d\n",             handy_sdl_get_framecounter());
+	// settle() keeps a command line flag from becoming a stored preference: if
+	// the value is untouched since startup it is written back as the file had
+	// it, and only a change made while running is actually saved.
+	fprintf(fp, "video.scale=%d\n",         settle(handy_sdl_get_window_scale(),  base_scale,      stored_scale));
+	fprintf(fp, "video.fullscreen=%d\n",    settle(handy_sdl_get_fullscreen(),    base_fullscreen, stored_fullscreen));
+	fprintf(fp, "video.smooth=%d\n",        settle(handy_sdl_get_smoothing(),     base_smooth,     stored_smooth));
+	fprintf(fp, "video.integer_scale=%d\n", settle(handy_sdl_get_integer_scale(), base_integer,    stored_integer));
+	fprintf(fp, "emu.throttle=%d\n",        settle(handy_sdl_get_throttle(),      base_throttle,   stored_throttle));
+	fprintf(fp, "emu.sound=%d\n",           settle(gAudioEnabled ? 1 : 0,         base_sound,      stored_sound));
+	fprintf(fp, "emu.fps=%d\n",             settle(handy_sdl_get_framecounter(),  base_fps,        stored_fps));
 
 	fprintf(fp, "\n");
 	const char *dir = handy_sdl_gui_get_browse_dir();
@@ -242,12 +314,24 @@ void handy_sdl_config_save(void)
 		handy_sdl_comlynx_get_config(&mode, host, sizeof(host), &port);
 		handy_sdl_comlynx_status(&active, NULL, NULL, NULL);
 
+		// Same rule as above. Nothing changed since startup means whatever is
+		// here came from -comlynx, so put the file's own settings back and
+		// leave autostart as it was rather than latching a one-off link up.
+		std::string hoststr = host;
+		if(mode == base_cl_mode && port == base_cl_port && hoststr == base_cl_host)
+		{
+			mode    = stored_cl_mode;
+			hoststr = stored_cl_host;
+			port    = stored_cl_port;
+			active  = stored_cl_autostart;
+		}
+
 		const char *modename = "off";
 		if(mode == HANDY_COMLYNX_LISTEN)  modename = "listen";
 		if(mode == HANDY_COMLYNX_CONNECT) modename = "connect";
 
 		fprintf(fp, "comlynx.mode=%s\n", modename);
-		fprintf(fp, "comlynx.host=%s\n", host);
+		fprintf(fp, "comlynx.host=%s\n", hoststr.c_str());
 		fprintf(fp, "comlynx.port=%d\n", port);
 		// Only ask for the link to come back if it was actually up.
 		fprintf(fp, "comlynx.autostart=%d\n", active ? 1 : 0);

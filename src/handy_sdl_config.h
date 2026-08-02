@@ -33,6 +33,15 @@ void handy_sdl_config_get_video(int *scale, int *fullscreen,
 // Emulator settings, same convention.
 void handy_sdl_config_get_emulation(int *throttle, int *sound, int *fps);
 
+// Record what startup settled on once the command line has been applied. A
+// flag is a one-off instruction, so anything matching this at exit was never
+// changed by the user and is written back as the file originally had it.
+void handy_sdl_config_note_startup(int scale, int fullscreen, int smooth, int integer_scale,
+                                   int throttle, int sound, int fps);
+
+// Same, for the ComLynx settings. Called by handy_sdl_config_apply_comlynx().
+void handy_sdl_config_note_startup_comlynx(void);
+
 // Push the stored bindings over the defaults. Call after handy_sdl_input_init().
 void handy_sdl_config_apply_input(void);
 
