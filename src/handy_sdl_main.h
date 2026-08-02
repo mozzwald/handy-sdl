@@ -65,29 +65,18 @@
 #define     HANDY_VERSION           	"Handy 0.95 WIN32"
 #define     HANDY_BASE_FPS              60
 
-/* SDL declarations */
-extern SDL_Surface		*HandyBuffer; 			// Our Handy/SDL display buffer
-extern SDL_Surface		*mainSurface;	 		// Our Handy/SDL primary display
-
 /* Handy declarations */
-extern Uint32			*mpLynxBuffer;
+extern Uint32			*mpLynxBuffer;			// Mikey renders straight into this
 extern CSystem 		    *mpLynx;
 extern int				 mFrameSkip;
-extern int				 mpBpp;
 
 /* Handy/SDL declarations */
-extern int			 	LynxWidth;				// Lynx SDL screen width
-extern int			 	LynxHeight;      		// Lynx SDL screen height
+extern int			 	LynxWidth;				// Lynx screen width  (102 if rotated)
+extern int			 	LynxHeight;      		// Lynx screen height (160 if rotated)
 extern int 		 	    LynxFormat;				// Lynx ROM format type
 extern int 		 	    LynxRotate;				// Lynx ROM rotation type
-extern int				LynxScale;				// Scale output
-extern int				LynxLCD;                // LCD/Scanline Output
+extern int				LynxScale;				// Initial window size multiplier
 extern int				emulation;              // Emulation enabled
-extern int				rendertype;             // SDL Rendertype
-extern int				stype;					// Scaling/Scanline Routine
-extern int              filter;					// Output Filter
-extern Uint32           overlay_format;         // YUV Overlay format
-extern Uint8  		   *delta;
 
 inline	int 	handy_sdl_update(void);
 		void 	handy_sdl_rom_info(void);

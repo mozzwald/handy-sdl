@@ -7,7 +7,7 @@
 # file GPL.TXT for details. ;-)
 #
 
-# NOTE: zlib and OpenGL libs are a dependency, but are not checked for.
+# NOTE: zlib is a dependency, but is not checked for.
 
 # Figure out which system we're compiling for, and set the appropriate variables
 
@@ -16,9 +16,7 @@ ifeq "$(OSTYPE)" "msys"							# Win32
 
 SYSTYPE    = __GCCWIN32__
 EXESUFFIX  = .exe
-GLLIB      = -lopengl32
 ICON       = obj/icon.o
-SDLLIBTYPE = --libs
 MSG        = Win32 on MinGW
 
 else
@@ -27,18 +25,14 @@ ifeq "darwin" "$(findstring darwin,$(OSTYPE))"	# Should catch both 'darwin' and 
 
 SYSTYPE    = __GCCUNIX__ -D_OSX_
 EXESUFFIX  =
-GLLIB      =
 ICON       =
-SDLLIBTYPE = --static-libs
 MSG        = Mac OS X
 
 else											# *nix
 
 SYSTYPE    = __GCCUNIX__
 EXESUFFIX  =
-GLLIB      = -lGL
 ICON       =
-SDLLIBTYPE = --libs
 MSG        = generic Unix/Linux
 
 endif
@@ -48,18 +42,19 @@ CC         = gcc
 LD         = gcc
 TARGET     = handy_sdl
 
+SDLCFLAGS  = $(shell pkg-config --cflags sdl2)
+SDLLIBS    = $(shell pkg-config --libs sdl2)
+
 # Note that we use optimization level 2 instead of 3--3 doesn't seem to gain much over 2
-CFLAGS   = -MMD -Wall -Wno-switch -O4 -D$(SYSTYPE) -DANSI_GCC -DSDL_PATCH -ffast-math -fomit-frame-pointer `sdl-config --cflags` 
+CFLAGS   = -MMD -Wall -Wno-switch -O4 -D$(SYSTYPE) -DANSI_GCC -DSDL_PATCH -ffast-math -fomit-frame-pointer $(SDLCFLAGS)
 CPPFLAGS = -MMD -Wall -Wno-switch -Wno-non-virtual-dtor -O4 -D$(SYSTYPE) -DANSI_GCC -DSDL_PATCH \
-		-ffast-math -fomit-frame-pointer `sdl-config --cflags` -g \
-#		-fomit-frame-pointer `sdl-config --cflags` -g
-#		-fomit-frame-pointer `sdl-config --cflags` -DLOG_UNMAPPED_MEMORY_ACCESSES
+		-ffast-math -fomit-frame-pointer $(SDLCFLAGS) -g
 
 LDFLAGS =
 
-LIBS = -L/usr/local/lib -L/usr/lib `sdl-config $(SDLLIBTYPE)` -lstdc++ -lz $(GLLIB)
+LIBS = -L/usr/local/lib -L/usr/lib $(SDLLIBS) -lstdc++ -lz
 
-INCS = -I./src -I./src/handy-0.95 -I./src/sdlemu -I/usr/local/include -I/usr/include
+INCS = -I./src -I./src/handy-0.95 -I/usr/local/include -I/usr/include
 
 OBJS = \
 		obj/cart.o \
@@ -71,10 +66,6 @@ OBJS = \
 		obj/system.o \
 		obj/errorhandler.o \
 		obj/unzip.o \
-		obj/sdlemu_opengl.o \
-		obj/sdlemu_filter.o \
-		obj/sdlemu_video.o \
-		obj/sdlemu_overlay.o \
 		obj/handy_sdl_main.o \
 		obj/handy_sdl_handling.o \
 		obj/handy_sdl_graphics.o \
@@ -91,19 +82,17 @@ all: checkenv message obj $(TARGET)$(EXESUFFIX)
 checkenv:
 	@echo
 	@echo -n "*** Checking compilation environment... "
-ifeq "" "$(shell which sdl-config)"
+ifeq "" "$(shell pkg-config --exists sdl2 && echo yes)"
 	@echo
 	@echo
-	@echo "It seems that you don't have the SDL development libraries installed. If you"
-	@echo "have installed them, make sure that the sdl-config file is somewhere in your"
-	@echo "path and is executable."
+	@echo "It seems that you don't have the SDL2 development libraries installed."
+	@echo "On Debian/Ubuntu: sudo apt install libsdl2-dev"
 	@echo
 #Is there a better way to break out of the makefile?
 	@break
 else
 	@echo "OK"
 endif
-# !!! NOTE !!! Need to put a check here for libcdio, GL, etc.
 
 message:
 	@echo
@@ -140,14 +129,6 @@ obj/%.o: src/%.c
 	@$(CC) $(CFLAGS) $(INCS) -c $< -o $@
 
 obj/%.o: src/%.cpp
-	@echo "*** Compiling $<..."
-	@$(CC) $(CPPFLAGS) $(INCS) -c $< -o $@
-
-obj/%.o: src/sdlemu/%.c
-	@echo "*** Compiling $<..."
-	@$(CC) $(CFLAGS) $(INCS) -c $< -o $@
-
-obj/%.o: src/sdlemu/%.cpp
 	@echo "*** Compiling $<..."
 	@$(CC) $(CPPFLAGS) $(INCS) -c $< -o $@
 

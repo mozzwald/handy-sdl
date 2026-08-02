@@ -10,11 +10,14 @@ To compile Handy/SDL you need to check if you have the minimum
 requirements for compiling the sources:
 
 - GCC v4.3.x or higher
-- SDL v1.2.13 or higher
+- SDL v2.0.18 or higher  (Debian/Ubuntu: libsdl2-dev)
 - ZLIB v1.2.3
-- OpenGL libraries
-- supported OS (BeOS, Linux, FreeBSD and WIN32 through mingw); other OSs
+- supported OS (Linux, FreeBSD and WIN32 through mingw); other OSs
   may work to but you may need to change some items in the Makefile.
+
+Handy/SDL used to build against SDL 1.2 and OpenGL. It now uses the SDL2
+render API, which scales the Lynx display to any window size on the GPU, so
+neither SDL 1.2 nor an OpenGL library is needed any more.
 
 Optionally you need a Atari Lynx boot ROM which is available on the Internet. 
 We can't include the boot ROM since it's still copyrighted.

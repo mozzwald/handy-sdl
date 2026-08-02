@@ -32,25 +32,13 @@
 // handy_sdl_graphics.h                                                     //
 //////////////////////////////////////////////////////////////////////////////
 //                                                                          //
-// This is the Handy/SDL graphics header file. It manages the graphics      //
-// functions for emulating the Atari Lynx emulator using the SDL Library.   //
+// Video output for Handy/SDL, built on the SDL2 render API.                //
 //                                                                          //
-//    N. Wagenaar                                                           //
-// December 2005                                                            //
+// The Lynx framebuffer is a single streaming texture at native resolution. //
+// SDL_RenderSetLogicalSize() scales it to whatever size the window happens //
+// to be, on the GPU and with the aspect ratio preserved, so resizing needs //
+// no handling of its own.                                                  //
 //                                                                          //
-//////////////////////////////////////////////////////////////////////////////
-// Revision History:                                                        //
-// -----------------                                                        //
-//                                                                          //
-// December 2005 :                                                          //
-//  Since the 14th of April, the WIN32 of Handy (written by Keith Wilkins)  //
-//  Handy has become OpenSource. Handy/SDL v0.82 R1 was based upon the old  //
-//  v0.82 sources and was released closed source.                           //
-//                                                                          //
-//  Because of this event, the new Handy/SDL will be released as OpenSource //
-//  but is rewritten from scratch because of lost sources (tm). The SDLemu  //
-//  team has tried to bring Handy/SDL v0.1 with al the functions from the   //
-//  closed source version.                                                  //
 //////////////////////////////////////////////////////////////////////////////
 
 #ifndef __HANDY_SDL_GRAPHICS_H__
@@ -60,18 +48,39 @@
 #include <stdlib.h>
 #include <string.h>
 #include <SDL.h>
-#include <SDL_main.h>
-#include <SDL_timer.h>
 
-inline	void    handy_sdl_scale(void);
-inline  void    handy_sdl_draw_graphics(void);
-inline  void    handy_sdl_draw_filter(int filtertype, SDL_Surface *src, SDL_Surface *dst, Uint8 *delta);
-		int 	handy_sdl_video_setup(int rendertype, int fsaa, int fullscreen, int bpp, int scale, int accel, int sysnc);
-		void 	handy_sdl_video_init(int bpp);
-		int 	handy_sdl_video_setup_opengl(int fsaa, int accel, int sync);
-		int 	handy_sdl_video_setup_sdl(const SDL_VideoInfo *info);
-		int 	handy_sdl_video_setup_yuv(void);
-		UBYTE  *handy_sdl_display_callback(UOBJREF objref);
-		void 	handy_sdl_render_buffer(void);
-		void    handy_sdl_video_close(void);
+extern SDL_Window	*mainWindow;
+extern SDL_Renderer	*mainRenderer;
+extern SDL_Texture	*lynxTexture;
+
+// Create the window, renderer and texture. "scale" only picks the initial
+// window size; the user is free to drag it to anything afterwards.
+int   handy_sdl_video_setup(int fullscreen, int scale);
+
+// Point Mikey at our pixel buffer. Must be called again after the emulation
+// object is replaced, and whenever cartridge rotation changes the geometry.
+void  handy_sdl_attach_display(void);
+
+// Rebuild the texture and logical size from the current LynxWidth/LynxHeight.
+// Cartridge rotation swaps 160x102 for 102x160, so this runs on every load.
+int   handy_sdl_video_reconfigure(void);
+
+// Mikey's end-of-frame callback. This only flags the frame as ready; drawing
+// happens in the main loop so that the GUI can compose on top of it.
+UBYTE *handy_sdl_display_callback(UOBJREF objref);
+
+// Upload the last frame and present it. Pass a callback to draw the GUI over
+// the emulation, or NULL for none.
+void  handy_sdl_present(void (*overlay)(void));
+
+int   handy_sdl_frame_pending(void);
+
+void  handy_sdl_set_fullscreen(int on);
+int   handy_sdl_get_fullscreen(void);
+void  handy_sdl_set_smoothing(int linear);
+int   handy_sdl_get_smoothing(void);
+void  handy_sdl_set_window_scale(int scale);
+
+void  handy_sdl_video_close(void);
+
 #endif

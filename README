@@ -36,11 +36,21 @@ PC. The software was originally developed by Keith Wilkins [http://handy.sf.net]
 and was released under the GPL on 14th April 2004. 
 
 Handy/SDL is a port of the WIN32 sourcecode so that it can be used with the
-GCC compiler and the Simple Directmedia Layer (SDL) library. 
+GCC compiler and the Simple Directmedia Layer (SDL) library.
 
 Currently Handy/SDL compiles on WIN32 using mingw, and possible also on
 UN*X based systems (BeOS, Linux and FreeBSD). It may run on other systems
 as well but we can not guarantee that.
+
+The display now uses the SDL2 render API. The window can be resized freely
+and the picture is scaled to fit on the GPU with the aspect ratio preserved.
+Use -scale N for the initial size and -smooth if you prefer filtered scaling
+over sharp pixels.
+
+The old rendering backends and their options are gone: the OpenGL and YUV
+overlay paths (-rtype, -fsaa, -accel, -sync, -format), the software scalers
+and filters (-stype, -filter, -lcd) and the bit depth selector (-bpp). SDL2
+does the scaling in hardware, which is what most of them existed to provide.
 
 The port was done by the SDLEMU crew (http://sdlemu.ngemu.com) and especially
 by Niels Wagenaar and Carwin Jones. You may contact us by e-mail using

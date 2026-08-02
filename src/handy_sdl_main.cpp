@@ -71,63 +71,19 @@
 #include "handy_sdl_usage.h"
 //#include "sdlemu/sdlemu_opengl.h"
 
-/* SDL declarations */
-SDL_Surface		*HandyBuffer; 			// Our Handy/SDL display buffer
-SDL_Surface		*mainSurface;	 		// Our Handy/SDL primary display
-
 /* Handy declarations */
-Uint32			*mpLynxBuffer;
+Uint32			*mpLynxBuffer;			// Mikey renders straight into this
 CSystem 		*mpLynx;
 int				 mFrameSkip = 0;
-int				 mpBpp;				    // Lynx rendering bpp
 
 /* Handy/SDL declarations */
-int			 	LynxWidth;				// Lynx SDL screen width
-int			 	LynxHeight;      		// Lynx SDL screen height
-int				LynxScale = 1;			// Factor to scale the display
-int				LynxLCD = 1;			// Emulate LCD Display
+int			 	LynxWidth;				// Lynx screen width  (102 if rotated)
+int			 	LynxHeight;      		// Lynx screen height (160 if rotated)
+int				LynxScale = 3;			// Initial window size multiplier
 int 		 	LynxFormat;				// Lynx ROM format type
 int 		 	LynxRotate;				// Lynx ROM rotation type
-Uint32          overlay_format = SDL_YV12_OVERLAY; // YUV Overlay format
 
 int		 		emulation = 0;
-Uint8          *delta;
-/*
-	Handy/SDL Rendering output
-
-	1 = SDL rendering
-	2 = OpenGL rendering
-	3 = YUV Overlay rendering
-
-	Default = 1 (SDL)
-*/
-int				rendertype = 1;
-
-/*
-	Handy/SDL Scaling/Scanline routine
-
-	1 = SDLEmu v1 (compatible with al SDL versions)
-	2 = SDLEmu v2 (faster but might break in future SDL versions or on certain platforms)
-	3 = Pierre Doucet v1 (compatible but possiby slow)
-
-	Default = 1 (SDLEmu v1)
-*/
-
-int				stype = 1;				// Scaling/Scanline routine.
-
-
-/*
-	Handy/SDL Filter selection
-
-	1 = SDLEmu v1 (compatible with al SDL versions)
-	2 = SDLEmu v2 (faster but might break in future SDL versions or on certain platforms)
-	3 = Pierre Doucet v1 (compatible but possiby slow)
-
-	Default = 1 (SDLEmu v1)
-*/
-
-int				filter = 0;				// Scaling/Scanline routine.
-
 
 /*
 	Name	            : 	handy_sdl_update
@@ -279,16 +235,10 @@ void handy_sdl_quit(void)
     SDL_PauseAudio(1);
 	emulation   = -1;
 
-    //Remove YUV Overlay
-    if ( rendertype == 3 )
-        handy_sdl_video_close();
+	handy_sdl_comlynx_close();
+	handy_sdl_video_close();
 
-	//Let is give some free memory
-    free(mpLynxBuffer);
-
-	// Destroy SDL Surface's
-	SDL_FreeSurface(HandyBuffer);
-	SDL_FreeSurface(mainSurface);
+	free(mpLynxBuffer);
 
 	// Close SDL Subsystems
 	SDL_QuitSubSystem(SDL_INIT_VIDEO|SDL_INIT_AUDIO);
@@ -310,12 +260,7 @@ int main(int argc, char *argv[])
 	int		 	Autoskip = 0; // Autoskip
 	int		 	Skipped = 0;
 	int		 	Fullscreen = 0;
-	int			bpp = 0; // BPP -> 8,16 or 32. 0 = autodetect (default)
-	int		    fsaa = 0;   // OpenGL FSAA (default off)
-	int			accel = 1;  // OpenGL Hardware accel (default on)
-	int         sync  = 0;  // OpenGL VSYNC (default off)
-	int			overlay = 1; // YUV Overlay format
-	char        overlaytype[8];   // Overlay Format
+	int			Smoothing  = 0;  // linear filtering when scaling up
 
 	gAudioEnabled = TRUE;
 
@@ -342,17 +287,17 @@ int main(int argc, char *argv[])
 		if (!strcmp(argv[i], "-nosound")) 		gAudioEnabled = FALSE;
 		if (!strcmp(argv[i], "-fullscreen"))	Fullscreen = 1;
 		if (!strcmp(argv[i], "-nofullscreen"))	Fullscreen = 0;
-		if (!strcmp(argv[i], "-fsaa"))			fsaa = 1;
-		if (!strcmp(argv[i], "-nofsaa"))		fsaa = 0;
-		if (!strcmp(argv[i], "-accel"))		accel = 1;
-		if (!strcmp(argv[i], "-noaccel"))		accel = 0;
-		if (!strcmp(argv[i], "-sync"))			sync = 1;
-		if (!strcmp(argv[i], "-nosync"))		sync = 0;
+		if (!strcmp(argv[i], "-smooth"))		Smoothing = 1;
+		if (!strcmp(argv[i], "-nosmooth"))		Smoothing = 0;
+		if (!strcmp(argv[i], "-1")) LynxScale = 1;
 		if (!strcmp(argv[i], "-2")) LynxScale = 2;
 		if (!strcmp(argv[i], "-3")) LynxScale = 3;
 		if (!strcmp(argv[i], "-4")) LynxScale = 4;
-		if (!strcmp(argv[i], "-lcd")) LynxLCD = 1;
-		if (!strcmp(argv[i], "-nolcd")) LynxLCD = 0;
+		if (!strcmp(argv[i], "-scale"))
+		{
+			if (i+1 < argc) LynxScale = atoi(argv[++i]);
+			if (LynxScale < 1) LynxScale = 1;
+		}
 		if (!strcmp(argv[i], "-frameskip"))
 		{
 			frameskip = atoi(argv[++i]);
@@ -368,85 +313,6 @@ int main(int argc, char *argv[])
 			}
 		}
 		if (!strcmp(argv[i], "-comlynxtrace"))	handy_sdl_comlynx_trace(1);
-		if (!strcmp(argv[i], "-bpp"))
-		{
-			bpp = atoi(argv[++i]);
-			if ( (bpp != 0) && (bpp != 8) && (bpp != 15) && (bpp != 16) && (bpp != 24) && (bpp != 32) )
-			{
-				bpp = 0;
-			}
-		}
-		if (!strcmp(argv[i], "-rtype"))
-		{
-			rendertype = atoi(argv[++i]);
-			if ( (rendertype != 1) && (rendertype != 2) && (rendertype != 3))
-			{
-				rendertype = 1;
-			}
-		}
-
-		if (!strcmp(argv[i], "-stype"))
-		{
-			stype = atoi(argv[++i]);
-			if ( (stype != 1) && (stype != 2) && (stype != 3))
-			{
-				stype = 1;
-			}
-		}
-
-		if (!strcmp(argv[i], "-filter"))
-		{
-			filter = atoi(argv[++i]);
-			// Check if the filter number is larger then 1 and not more then 10.
-			if ( (filter <= 10) && (filter >= 1) )
-			{
-				rendertype =  1;  // Filter type only works with SDL rendering
-				LynxScale  =  2;  // Maximum size is 2 times
-				bpp        = 16;  // Maximum BPP is 16.
-			}
-			// Otherwise disable the filter
-			else
-			{
-			    filter = 0;
-			}
-		}
-
-		if (!strcmp(argv[i], "-format"))
-		{
-		    overlay = atoi(argv[++i]);
-			if ( ( overlay <= 5 ) && (overlay >= 1) )
-			{
-				switch(overlay) {
-					case 1: 
-						overlay_format = SDL_YV12_OVERLAY;
-						strcpy( overlaytype, "YV12" );
-						break;
-					case 2:
-						overlay_format = SDL_IYUV_OVERLAY;
-						strcpy( overlaytype, "IYUV" );
-						break;
-					case 3:
-						overlay_format = SDL_YUY2_OVERLAY;
-						strcpy( overlaytype, "YUY2" );
-						break;
-					case 4:
-						overlay_format = SDL_UYVY_OVERLAY;
-						strcpy( overlaytype, "UYVY" );
-						break;
-					case 5:
-						overlay_format = SDL_YVYU_OVERLAY;
-						strcpy( overlaytype, "YVYU" );
-						break;
-				}
-			}	
-			else
-			{
-			    overlay_format = SDL_YV12_OVERLAY;
-				strcpy( overlaytype, "YV12" );
-				
-			}
-			printf("Using YUV Overlay format: %s\n",overlaytype);
-		}
 	}
 
 	// Initalising SDL for Audio and Video support
@@ -475,24 +341,22 @@ int main(int argc, char *argv[])
 	handy_sdl_comlynx_init();
 
 	// Initialise Handy/SDL video
-	if( !handy_sdl_video_setup(rendertype,fsaa,Fullscreen, bpp, LynxScale, accel, sync) )
+	printf("Initialising Handy Display... ");
+	handy_sdl_set_smoothing(Smoothing);
+	if( !handy_sdl_video_setup(Fullscreen, LynxScale) )
 	{
 		return 0;
 	}
-
-
+	handy_sdl_attach_display();
+	printf("[DONE]\n");
 
 	// Initialise Handy/SDL audio
-	printf("\nInitialising SDL Audio...     ");
+	printf("Initialising SDL Audio...     ");
 	if(handy_sdl_audio_init())
 	{
 		gAudioEnabled = TRUE;
 	}
 	printf("[DONE]\n");
-
-
-	// Setup of Handy Core video
-	handy_sdl_video_init(mpBpp);
 
 
 	handy_sdl_start_time = SDL_GetTicks();
@@ -515,8 +379,12 @@ int main(int argc, char *argv[])
 				case SDL_KEYDOWN:
 					KeyMask = handy_sdl_on_key_down(handy_sdl_event.key, KeyMask);
 					break;
+				case SDL_QUIT:
+					handy_sdl_quit();
+					break;
 				default:
-					KeyMask = 0;
+					// Note: this used to clear KeyMask, so any event that was
+					// not a keypress silently released every Lynx button.
 					break;
 			}
 		}
@@ -550,6 +418,11 @@ int main(int argc, char *argv[])
 					gTimerCount++;
 			}
 		}
+
+		// Draw the frame the emulation just finished. This used to happen
+		// inside Mikey's display callback; doing it here keeps the emulation
+		// core out of the business of compositing the screen.
+		handy_sdl_present(NULL);
 
 		handy_sdl_this_time = SDL_GetTicks();
 
@@ -585,9 +458,8 @@ int main(int argc, char *argv[])
 			{
 				static char buffer[256];
 
-				sprintf (buffer, "Handy %0.0f", fps_counter);
-				strcat( buffer, "FPS");
-				SDL_WM_SetCaption( buffer , "HANDY" );
+				snprintf (buffer, sizeof(buffer), "Handy/SDL - %0.0f FPS", fps_counter);
+				SDL_SetWindowTitle( mainWindow, buffer );
 			}
 		}
 
