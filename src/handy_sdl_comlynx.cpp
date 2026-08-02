@@ -152,9 +152,12 @@ static void comlynx_tx_callback(int data, UOBJREF objref)
 {
 	(void)objref;
 
-	// Mikey also fires this for a line break, which a raw byte pipe has no
-	// way to represent. Anything outside a data byte is not ours to forward.
-	if(data & ~0xff) return;
+	// Mikey also fires this for a line break, which a raw byte pipe has no way
+	// to represent, so drop those. Ordinary bytes now arrive carrying the
+	// ninth bit in bit 8; TCP cannot express it either, so mask it off and
+	// send the eight data bits. The receiving side re-derives it.
+	if(data & UART_BREAK_CODE) return;
+	data &= 0xff;
 
 	// Say where the byte actually went. With no peer attached comlynx_queue()
 	// has nobody to hand it to and it is simply dropped, which otherwise looks

@@ -102,6 +102,18 @@ extern int gComLynxTrace;
 #define UART_RX_INACTIVE	0x80000000
 #define UART_BREAK_CODE		0x00008000
 #define	UART_MAX_RX_QUEUE	32
+
+// Parity of the eight data bits. The ninth bit on the wire is derived from
+// this when PAREN is set; with PAREN clear it is just the PAREVEN setting,
+// used as a mark/space marker that receivers compare against their own.
+static inline int UartParity8(int data)
+{
+	int v = data & 0xff;
+	v ^= v>>4;
+	v ^= v>>2;
+	v ^= v>>1;
+	return v & 1;
+}
 // One Timer 4 borrow-out is one bit period (see the "8 clocks per bit"
 // divide in Update()), so a ComLynx frame - start bit, 8 data, parity and
 // stop - occupies 11 of them, and back to back frames on the wire are 11
@@ -214,6 +226,18 @@ class CMikie : public CLynxBase
 
 		void	ComLynxCable(int status);
 		void	ComLynxRxData(int data);
+
+		// The ninth bit a correctly behaving transmitter would send for this
+		// byte, under the parity settings currently in SERCTL.
+		int		UartExpectedParityBit(int data)
+		{
+			if(mUART_PARITY_ENABLE)
+			{
+				int odd=UartParity8(data);
+				return mUART_PARITY_EVEN?odd:!odd;
+			}
+			return mUART_PARITY_EVEN?1:0;
+		};
 		void	ComLynxTxLoopback(int data);
 		void	ComLynxTxCallback(void (*function)(int data,UOBJREF objref),UOBJREF objref);
 		// Free slots in the Rx queue. ComLynxRxData() silently discards when
@@ -567,6 +591,19 @@ class CMikie : public CLynxBase
 							// If RX_READY already set then we have an overrun
 							// as previous byte hasnt been read
 							if(mUART_RX_READY) mUART_Rx_overun_error=1;
+
+							// The ninth bit travels with the byte. Report a
+							// parity error when it disagrees with what the
+							// current SERCTL settings call for; with PAREN
+							// clear this is the mark/space marker instead and
+							// the receiver leaves the comparison to software.
+							mUART_Rx_parity_error=0;
+							if(mUART_PARITY_ENABLE)
+							{
+								int parbit=(mUART_RX_DATA&0x0100)?1:0;
+								if(parbit!=UartExpectedParityBit((int)mUART_RX_DATA))
+									mUART_Rx_parity_error=1;
+							}
 
 							// Flag byte as being recvd
 							mUART_RX_READY=1;
@@ -1759,6 +1796,7 @@ class CMikie : public CLynxBase
 		int			mUART_Rx_waiting;
 		int			mUART_Rx_framing_error;
 		int			mUART_Rx_overun_error;
+		int			mUART_Rx_parity_error;
 
 		//
 		// Screen related

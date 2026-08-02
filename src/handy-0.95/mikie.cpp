@@ -311,6 +311,7 @@ void CMikie::Reset(void)
 	mUART_Rx_waiting=0;
 	mUART_Rx_framing_error=0;
 	mUART_Rx_overun_error=0;
+	mUART_Rx_parity_error=0;
 
 	mUART_SENDBREAK=0;
 	mUART_TX_DATA=0;
@@ -792,6 +793,17 @@ void CMikie::ComLynxCable(int status)
 void CMikie::ComLynxRxData(int data)
 {
 	TRACE_MIKIE1("ComLynxRxData() - Received %04x",data);
+
+	// A raw byte pipe cannot carry the ninth bit, so supply the one a correct
+	// transmitter would have sent. Without this every byte arriving over the
+	// network would look like a parity error the moment PAREN is set, and a
+	// receiver that checks PARERR would throw the lot away.
+	if(!(data&UART_BREAK_CODE))
+	{
+		data &= 0xff;
+		if(UartExpectedParityBit(data)) data|=0x0100;
+	}
+
 	// Copy over the data
 	if(mUART_Rx_waiting<UART_MAX_RX_QUEUE)
 	{
@@ -811,6 +823,8 @@ void CMikie::ComLynxRxData(int data)
 	else
 	{
 		TRACE_MIKIE0("ComLynxRxData() - UART RX Overun");
+		// Dropping it silently hid the condition from the guest entirely.
+		mUART_Rx_overun_error=1;
 		if(gComLynxTrace)
 			printf("ComLynx: queue FULL, peer byte %02x DROPPED\n", (unsigned)(data&0xff));
 	}
@@ -835,12 +849,13 @@ void CMikie::ComLynxTxLoopback(int data)
 		// this goes to the FRONT of the queue while peer bytes go to the back,
 		// so it can overtake a peer byte that arrived first.
 		if(gComLynxTrace)
-			printf("ComLynx: queue <- loopback %02x (FRONT), depth %d\n",
-				(unsigned)(data&0xff), (int)mUART_Rx_waiting);
+			printf("ComLynx: queue <- loopback %02x (9th bit %d) (FRONT), depth %d\n",
+				(unsigned)(data&0xff), (data&0x0100)?1:0, (int)mUART_Rx_waiting);
 	}
 	else
 	{
 		TRACE_MIKIE0("ComLynxTxLoopback() - UART RX Overun");
+		mUART_Rx_overun_error=1;
 		if(gComLynxTrace)
 			printf("ComLynx: queue FULL, loopback byte %02x DROPPED\n", (unsigned)(data&0xff));
 	}
@@ -2013,6 +2028,7 @@ void CMikie::Poke(ULONG addr,UBYTE data)
 			{
 				mUART_Rx_overun_error=0;
 				mUART_Rx_framing_error=0;
+				mUART_Rx_parity_error=0;
 			}
 
 			if(mUART_SENDBREAK)
@@ -2032,18 +2048,12 @@ void CMikie::Poke(ULONG addr,UBYTE data)
 			// ComLynx only has one output pin, hence Rx & Tx are shorted
 			// therefore any transmitted data will loopback
 			//
-			mUART_TX_DATA=data;
-			// Calculate Parity data
-			if(mUART_PARITY_ENABLE)
-			{
-				// Calc parity value
-				// Leave at zero !!
-			}
-			else
-			{
-				// If disabled then the PAREVEN bit is sent
-				if(mUART_PARITY_EVEN) data|=0x0100;
-			}
+			// Attach the ninth bit to the byte itself, so it reaches both the
+			// loopback and the network callback. The original code computed
+			// this into a local that was then thrown away, leaving every
+			// transmitted frame with a ninth bit of zero.
+			mUART_TX_DATA=(data&0xff);
+			if(UartExpectedParityBit((int)mUART_TX_DATA)) mUART_TX_DATA|=0x0100;
 			// Set countdown to transmission
 			mUART_TX_COUNTDOWN=UART_TX_TIME_PERIOD;
 			// Loop back what we transmitted
@@ -2651,6 +2661,7 @@ UBYTE CMikie::Peek(ULONG addr)
 				ULONG retval=0;
 				retval|=(mUART_TX_COUNTDOWN&UART_TX_INACTIVE)?0xA0:0x00;	// Indicate TxDone & TxAllDone
 				retval|=(mUART_RX_READY)?0x40:0x00;							// Indicate Rx data ready
+				retval|=(mUART_Rx_parity_error)?0x10:0x00;					// Parity error
 				retval|=(mUART_Rx_overun_error)?0x08:0x0;					// Framing error
 				retval|=(mUART_Rx_framing_error)?0x04:0x00;					// Rx overrun
 				retval|=(mUART_RX_DATA&UART_BREAK_CODE)?0x02:0x00;			// Indicate break received
@@ -2659,10 +2670,11 @@ UBYTE CMikie::Peek(ULONG addr)
 				// This register is polled hard, so only report the reads that
 				// can actually make a receiver throw a byte away: the error
 				// flags it masks against.
-				if(gComLynxTrace && (retval&0x0E))
+				if(gComLynxTrace && (retval&0x1E))
 				{
-					printf("ComLynx: SERCTL read %02x at PC=%04x ->%s%s%s\n", (unsigned)retval,
+					printf("ComLynx: SERCTL read %02x at PC=%04x ->%s%s%s%s\n", (unsigned)retval,
 						mSystem.mCpu->GetPC(),
+						(retval&0x10)?" PARERR":"",
 						(retval&0x08)?" OVERRUN":"", (retval&0x04)?" FRAMERR":"",
 						(retval&0x02)?" RXBRK":"");
 				}
