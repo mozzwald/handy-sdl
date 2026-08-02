@@ -62,5 +62,17 @@ printf("\n");
 printf(" -format 1 - 5        : Select the desired YUV Overlay format\n");
 printf("                        1 = YV12, 2 = IYUV, 3 = YUY2\n");
 printf("                        4 = UYVY, 5 = YVYU\n");
+printf("\n");
+printf(" Keyboard controls:\n");
+printf("\n");
+printf(" Up/Down/Left/Right   : Lynx joypad\n");
+printf(" Z                    : Lynx A\n");
+printf(" X                    : Lynx B\n");
+printf(" Return               : Lynx PAUSE\n");
+printf(" F1                   : Lynx OPTION 1\n");
+printf(" F2                   : Lynx OPTION 2\n");
+printf(" Escape               : Power off and exit\n");
+printf("\n");
+printf(" The bindings are fixed; there is no joystick support yet.\n");
 
 }

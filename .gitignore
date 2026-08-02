@@ -4,3 +4,13 @@ handy_sdl
 
 # Copyrighted Lynx boot ROM - must be supplied by the user, never committed
 lynxboot.img
+
+# Cartridge images dropped in the tree for testing. Same reasoning: these are
+# not ours to distribute.
+*.lnx
+*.lyx
+*.o
+*.com
+*.bin
+*.zip
+*.gz

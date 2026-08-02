@@ -72,24 +72,28 @@ Handy/SDL using the following command:
 
 The context of ROMFILE is the filename of the an Atari Lynx ROM dump (can be
 either compressed or uncompressed). You can also use switches. By just typing
-./vj you get an overview of the options you can use. WIN32 users should look
-into the stdout.txt for that information.
+./handy_sdl you get an overview of the options and the keyboard controls.
+WIN32 users should look into the stdout.txt for that information.
 
 This emulator also emulates the Atari Lynx gamebuttons. By using the following
 keyboard settings you can (possibly) play a given game:
 
-Atari Button A       : Z
-Atari Button B       : X
-Atari Button PAUSE   : RETURN
-Atari Button OPT1	 : F1
-Atari BUTTON OPT2    : F2
-Atari UP             : UP
-Atari DOWN           : DOWN
-Atari LEFT           : LEFT
-Atari RIGHT          : RIGHT
+Lynx joypad          : UP / DOWN / LEFT / RIGHT
+Lynx button A        : Z
+Lynx button B        : X
+Lynx button PAUSE    : RETURN
+Lynx button OPTION 1 : F1
+Lynx button OPTION 2 : F2
+
+Note that A is the left hand key and B the right hand one, which is the
+opposite way round to the letters on the console itself.
 
 With ESC you can easily stop Handy/SDL which will get you back to the prompt
-of your shell.
+of your shell. There is no confirmation, and the emulator has no other
+hotkeys: everything else is set on the command line at startup.
+
+The bindings above cannot currently be changed, and there is no joystick or
+gamepad support.
 
 
 -------------------
