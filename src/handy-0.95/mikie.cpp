@@ -804,10 +804,15 @@ void CMikie::ComLynxRxData(int data)
 		mUART_Rx_input_ptr=(mUART_Rx_input_ptr+1)%UART_MAX_RX_QUEUE;
 		mUART_Rx_waiting++;
 		TRACE_MIKIE2("ComLynxRxData() - input ptr=%02d waiting=%02d",mUART_Rx_input_ptr,mUART_Rx_waiting);
+		if(gComLynxTrace)
+			printf("ComLynx: queue <- peer %02x (back), depth %d\n",
+				(unsigned)(data&0xff), (int)mUART_Rx_waiting);
 	}
 	else
 	{
 		TRACE_MIKIE0("ComLynxRxData() - UART RX Overun");
+		if(gComLynxTrace)
+			printf("ComLynx: queue FULL, peer byte %02x DROPPED\n", (unsigned)(data&0xff));
 	}
 }
 
@@ -826,10 +831,18 @@ void CMikie::ComLynxTxLoopback(int data)
 		mUART_Rx_input_queue[mUART_Rx_output_ptr]=data;
 		mUART_Rx_waiting++;
 		TRACE_MIKIE2("ComLynxTxLoopback() - input ptr=%02d waiting=%02d",mUART_Rx_input_ptr,mUART_Rx_waiting);
+		// Rx and Tx are shorted on ComLynx so everything sent comes back. Note
+		// this goes to the FRONT of the queue while peer bytes go to the back,
+		// so it can overtake a peer byte that arrived first.
+		if(gComLynxTrace)
+			printf("ComLynx: queue <- loopback %02x (FRONT), depth %d\n",
+				(unsigned)(data&0xff), (int)mUART_Rx_waiting);
 	}
 	else
 	{
 		TRACE_MIKIE0("ComLynxTxLoopback() - UART RX Overun");
+		if(gComLynxTrace)
+			printf("ComLynx: queue FULL, loopback byte %02x DROPPED\n", (unsigned)(data&0xff));
 	}
 }
 
@@ -1982,6 +1995,19 @@ void CMikie::Poke(ULONG addr,UBYTE data)
 			mUART_SENDBREAK=data&0x02;
 			mUART_PARITY_EVEN=data&0x01;
 
+			// With PAREN clear the Lynx does not do parity at all: PAREVEN
+			// becomes a mark/space marker bit and receivers compare it against
+			// the 9th bit of each byte, dropping anything that disagrees. Which
+			// of the two schemes the cartridge picked decides what a peer has
+			// to put in that bit, so log it with the wire traffic.
+			if(gComLynxTrace)
+			{
+				printf("ComLynx: SERCTL=%02x %s\n", data,
+					(data&0x10) ? "parity enabled (9th bit = parity, marker check skipped)"
+					            : ((data&0x01) ? "no parity, marker=MARK (peer must send 9th bit 1)"
+					                           : "no parity, marker=SPACE (peer must send 9th bit 0)"));
+			}
+
 			// Reset all errors if required
 			if(data&0x08)
 			{
@@ -2630,6 +2656,16 @@ UBYTE CMikie::Peek(ULONG addr)
 				retval|=(mUART_RX_DATA&UART_BREAK_CODE)?0x02:0x00;			// Indicate break received
 				retval|=(mUART_RX_DATA&0x0100)?0x01:0x00;					// Add parity bit
 				TRACE_MIKIE2("Peek(SERCTL  ,%02x) at PC=%04x",retval,mSystem.mCpu->GetPC());
+				// This register is polled hard, so only report the reads that
+				// can actually make a receiver throw a byte away: the error
+				// flags it masks against.
+				if(gComLynxTrace && (retval&0x0E))
+				{
+					printf("ComLynx: SERCTL read %02x at PC=%04x ->%s%s%s\n", (unsigned)retval,
+						mSystem.mCpu->GetPC(),
+						(retval&0x08)?" OVERRUN":"", (retval&0x04)?" FRAMERR":"",
+						(retval&0x02)?" RXBRK":"");
+				}
 				return (UBYTE)retval;
 			}
 			break;
@@ -2637,6 +2673,14 @@ UBYTE CMikie::Peek(ULONG addr)
 		case (SERDAT&0xff):
 			mUART_RX_READY=0;
 			TRACE_MIKIE2("Peek(SERDAT  ,%02x) at PC=%04x",(UBYTE)mUART_RX_DATA,mSystem.mCpu->GetPC());
+			// The byte the cartridge actually consumed, with the 9th bit it
+			// will see in SERCTL and how much is still queued behind it.
+			if(gComLynxTrace)
+			{
+				printf("ComLynx: cart reads %02x (9th bit %d) at PC=%04x, %d still queued\n",
+					(unsigned)(mUART_RX_DATA&0xff), (mUART_RX_DATA&0x0100)?1:0,
+					mSystem.mCpu->GetPC(), (int)mUART_Rx_waiting);
+			}
 			return (UBYTE)(mUART_RX_DATA&0xff);
 			break;
 

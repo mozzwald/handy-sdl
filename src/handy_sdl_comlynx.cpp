@@ -82,6 +82,10 @@ static int		txlen[COMLYNX_MAX_PEERS];
 static int		cable_asserted = 0;
 static int		trace = 0;
 
+// Mikey needs to see the trace flag too, so the UART register traffic can be
+// logged alongside the wire bytes. Non-static for that reason.
+int				gComLynxTrace = 0;
+
 
 static void comlynx_set_nonblocking(SOCKET s)
 {
@@ -152,7 +156,17 @@ static void comlynx_tx_callback(int data, UOBJREF objref)
 	// way to represent. Anything outside a data byte is not ours to forward.
 	if(data & ~0xff) return;
 
-	if(trace) printf("ComLynx: cart -> net %02x\n", data & 0xff);
+	// Say where the byte actually went. With no peer attached comlynx_queue()
+	// has nobody to hand it to and it is simply dropped, which otherwise looks
+	// identical in a log to a peer that received it and chose not to answer.
+	if(trace)
+	{
+		if(peer_count)
+			printf("ComLynx: cart -> net %02x (to %d peer%s)\n",
+				data & 0xff, peer_count, peer_count==1?"":"s");
+		else
+			printf("ComLynx: cart -> net %02x DISCARDED, no peer connected\n", data & 0xff);
+	}
 	tx_bytes++;
 	comlynx_queue((unsigned char)data, -1);
 }
@@ -160,6 +174,7 @@ static void comlynx_tx_callback(int data, UOBJREF objref)
 void handy_sdl_comlynx_trace(int on)
 {
 	trace = on;
+	gComLynxTrace = on;
 }
 
 /*

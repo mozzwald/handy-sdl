@@ -94,6 +94,10 @@ class CSystem;
 #define LINE_WIDTH		160
 #define	LINE_SIZE		80
 
+// Set by -comlynxtrace; see handy_sdl_comlynx.cpp. Every trace point is gated
+// on it, so a normal run pays only the branch.
+extern int gComLynxTrace;
+
 #define UART_TX_INACTIVE	0x80000000
 #define UART_RX_INACTIVE	0x80000000
 #define UART_BREAK_CODE		0x00008000
