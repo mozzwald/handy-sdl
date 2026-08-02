@@ -11,6 +11,7 @@
 
 # Figure out which system we're compiling for, and set the appropriate variables
 
+HOST_OS := $(shell uname -s 2>/dev/null)
 
 ifeq "$(OSTYPE)" "msys"							# Win32
 
@@ -20,8 +21,7 @@ ICON       = obj/icon.o
 MSG        = Win32 on MinGW
 
 else
-#ifeq "$(OSTYPE)" "darwin"
-ifeq "darwin" "$(findstring darwin,$(OSTYPE))"	# Should catch both 'darwin' and 'darwin7.0'
+ifeq "$(HOST_OS)" "Darwin"
 
 SYSTYPE    = __GCCUNIX__ -D_OSX_
 EXESUFFIX  =
@@ -39,20 +39,22 @@ endif
 endif
 
 CC         = gcc
-LD         = gcc
+CXX        = g++
+LD         = $(CXX)
 TARGET     = handy_sdl
 
-SDLCFLAGS  = $(shell pkg-config --cflags sdl2)
-SDLLIBS    = $(shell pkg-config --libs sdl2)
+PKG_CONFIG ?= pkg-config
+SDLCFLAGS  = $(shell $(PKG_CONFIG) --cflags sdl2 2>/dev/null)
+SDLLIBS    = $(shell $(PKG_CONFIG) --libs sdl2 2>/dev/null)
 
 # Note that we use optimization level 2 instead of 3--3 doesn't seem to gain much over 2
-CFLAGS   = -MMD -Wall -Wno-switch -O4 -D$(SYSTYPE) -DANSI_GCC -DSDL_PATCH -ffast-math -fomit-frame-pointer $(SDLCFLAGS)
-CPPFLAGS = -MMD -Wall -Wno-switch -Wno-non-virtual-dtor -O4 -D$(SYSTYPE) -DANSI_GCC -DSDL_PATCH \
+CFLAGS   = -MMD -Wall -Wno-switch -O2 -D$(SYSTYPE) -DANSI_GCC -DSDL_PATCH -ffast-math -fomit-frame-pointer $(SDLCFLAGS)
+CPPFLAGS = -MMD -Wall -Wno-switch -Wno-non-virtual-dtor -O2 -D$(SYSTYPE) -DANSI_GCC -DSDL_PATCH \
 		-ffast-math -fomit-frame-pointer $(SDLCFLAGS) -g
 
 LDFLAGS =
 
-LIBS = -L/usr/local/lib -L/usr/lib $(SDLLIBS) -lstdc++ -lz -lm
+LIBS = -L/usr/local/lib -L/usr/lib $(SDLLIBS) -lz -lm
 
 INCS = -I./src -I./src/handy-0.95 -I/usr/local/include -I/usr/include
 
@@ -89,18 +91,26 @@ all: checkenv message obj $(TARGET)$(EXESUFFIX)
 
 checkenv:
 	@echo
-	@echo -n "*** Checking compilation environment... "
-ifeq "" "$(shell pkg-config --exists sdl2 && echo yes)"
-	@echo
-	@echo
-	@echo "It seems that you don't have the SDL2 development libraries installed."
-	@echo "On Debian/Ubuntu: sudo apt install libsdl2-dev"
-	@echo
-#Is there a better way to break out of the makefile?
-	@break
-else
+	@printf "*** Checking compilation environment... "
+	@if ! command -v $(PKG_CONFIG) >/dev/null 2>&1; then \
+		echo; \
+		echo; \
+		echo "It seems that you don't have pkg-config installed."; \
+		echo "On Debian/Ubuntu: sudo apt install pkg-config"; \
+		echo "On macOS with Homebrew: brew install pkg-config"; \
+		echo; \
+		exit 1; \
+	fi
+	@if ! $(PKG_CONFIG) --exists sdl2; then \
+		echo; \
+		echo; \
+		echo "It seems that you don't have the SDL2 development libraries installed."; \
+		echo "On Debian/Ubuntu: sudo apt install libsdl2-dev"; \
+		echo "On macOS with Homebrew: brew install sdl2"; \
+		echo; \
+		exit 1; \
+	fi
 	@echo "OK"
-endif
 
 message:
 	@echo
@@ -108,13 +118,13 @@ message:
 	@echo
 
 clean:
-	@echo -n "*** Cleaning out the garbage..."
+	@printf "*** Cleaning out the garbage..."
 	@rm -rf obj
 	@rm -f ./$(TARGET)$(EXESUFFIX)
 	@echo done!
 
 obj:
-	@mkdir obj
+	@mkdir -p obj
 
 # This is only done for Win32 at the moment...
 
@@ -130,7 +140,7 @@ obj/%.o: src/handy-0.95/%.c
 
 obj/%.o: src/handy-0.95/%.cpp
 	@echo "*** Compiling $<..."
-	@$(CC) $(CPPFLAGS) $(INCS) -c $< -o $@
+	@$(CXX) $(CPPFLAGS) $(INCS) -c $< -o $@
 
 obj/%.o: src/%.c
 	@echo "*** Compiling $<..."
@@ -138,13 +148,13 @@ obj/%.o: src/%.c
 
 obj/%.o: src/%.cpp
 	@echo "*** Compiling $<..."
-	@$(CC) $(CPPFLAGS) $(INCS) -c $< -o $@
+	@$(CXX) $(CPPFLAGS) $(INCS) -c $< -o $@
 
 # Vendored Dear ImGui. -w because it is third party and its warnings are not
 # ours to fix; -fno-strict-aliasing to match upstream's build recommendations.
 obj/%.o: src/imgui/%.cpp
 	@echo "*** Compiling $<..."
-	@$(CC) $(CPPFLAGS) -w -fno-strict-aliasing $(INCS) -c $< -o $@
+	@$(CXX) $(CPPFLAGS) -w -fno-strict-aliasing $(INCS) -c $< -o $@
 
 obj/%.o: src/zlib-113/%.c
 	@echo "*** Compiling $<..."
@@ -160,4 +170,3 @@ $(TARGET)$(EXESUFFIX): $(OBJS)
 # The "-" in front is there just in case they haven't been created yet
 
 -include obj/*.d
-

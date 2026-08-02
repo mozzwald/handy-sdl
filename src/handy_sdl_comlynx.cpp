@@ -243,7 +243,7 @@ static int comlynx_start_listen(void)
 	addr.sin_addr.s_addr = htonl(INADDR_ANY);
 	addr.sin_port        = htons((unsigned short)peerport);
 
-	if(bind(listen_sock, (struct sockaddr *)&addr, sizeof(addr)) < 0)
+	if(::bind(listen_sock, (struct sockaddr *)&addr, sizeof(addr)) < 0)
 	{
 		printf("ComLynx: could not bind port %d\n", peerport);
 		CLOSESOCKET(listen_sock);
@@ -289,7 +289,7 @@ static int comlynx_start_connect(void)
 
 	// Connect while still blocking so startup either works or reports why,
 	// then switch to non-blocking for the emulation loop.
-	if(connect(s, res->ai_addr, (socklen_t)res->ai_addrlen) < 0)
+	if(::connect(s, res->ai_addr, (socklen_t)res->ai_addrlen) < 0)
 	{
 		printf("ComLynx: could not connect to %s:%d\n", peerhost, peerport);
 		CLOSESOCKET(s);
