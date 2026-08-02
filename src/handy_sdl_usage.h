@@ -1,12 +1,15 @@
 void handy_sdl_usage()
 {
-printf("Usage: ./handy_sdl romfile [options]\n");
+printf("Usage: ./handy_sdl [romfile] [options]\n");
 printf("\n");
 printf(" Global Handy/SDL options:\n");
 printf("\n");
 printf(" romfile              : Filename of the romfile. It can have several\n");
 printf("                        extensions (.lnx/.o/.com/.bin). Gzipped and\n");
 printf("                        zipped (.gz and .zip) are also supported.\n");
+printf("                        Optional: with no romfile the emulator starts\n");
+printf("                        with no cartridge and opens the ROM browser.\n");
+printf(" -h, --help           : Show this help and exit.\n");
 printf(" -frameskip 1 - 9     : Options to skip some frames. Default is 1.\n");
 printf(" -[no]fullscreen      : Disable/Enable fullscreen rendering mode.\n");
 printf(" -[no]throttle        : Disable/Enable throttle to a max of 60FPS.\n");

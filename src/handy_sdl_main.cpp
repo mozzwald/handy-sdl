@@ -319,13 +319,20 @@ int main(int argc, char *argv[])
 	printf("Written by SDLEmu Team, additions by Pierre Doucet\n");
 	printf("Contact: http://sdlemu.ngemu.com | shalafi@xs4all.nl\n\n");
 
-	if (argc < 2) {
-		handy_sdl_usage();
-		exit(EXIT_FAILURE);
-	}
+	// A cartridge is optional now that there is a GUI to load one with. The
+	// core boots happily with none - CCart reports "<No cart loaded>" - which
+	// leaves the boot ROM on screen until something is opened.
+	const char *romfile = "";
+	if (argc > 1 && argv[1][0] != '-') romfile = argv[1];
 
     for ( i=0; (i < argc || argv[i] != NULL ); i++ )
 	{
+		if (!strcmp(argv[i], "-h") || !strcmp(argv[i], "-help") ||
+		    !strcmp(argv[i], "--help") || !strcmp(argv[i], "-?"))
+		{
+			handy_sdl_usage();
+			exit(EXIT_SUCCESS);
+		}
 		if (!strcmp(argv[i], "-throttle")) 	Throttle = 1;
 		if (!strcmp(argv[i], "-nothrottle")) 	Throttle = 0;
 		if (!strcmp(argv[i], "-autoskip")) 	Autoskip = 1;
@@ -376,7 +383,7 @@ int main(int argc, char *argv[])
 	printf("Initialising Handy Core...    ");
 		try {
 		// Ugh, hardcoded lynxboot.img. Will be fixed in future versions.
-		mpLynx = new CSystem(argv[1], "lynxboot.img");
+		mpLynx = new CSystem(romfile, "lynxboot.img");
 	} catch (CLynxException &err) {
 		cerr << err.mMsg.str() << ": " << err.mDesc.str() << endl;
 		exit(EXIT_FAILURE);
@@ -404,7 +411,11 @@ int main(int argc, char *argv[])
 	{
 		printf("Warning: could not start the GUI, continuing without it\n");
 	}
-	handy_sdl_gui_set_rom_dir(argv[1]);
+	handy_sdl_gui_set_rom_dir(romfile);
+
+	// Nothing to play yet, so put the browser up rather than leaving the user
+	// staring at the boot ROM wondering what to do.
+	if(*romfile == '\0') handy_sdl_gui_open_browser();
 
 	// Input bindings and controller support
 	handy_sdl_input_init();

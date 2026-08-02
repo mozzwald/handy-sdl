@@ -80,6 +80,11 @@ Handy/SDL using the following command:
 
 ./handy_sdl [romfile] [options]
 
+The romfile is optional. Started with no arguments, Handy/SDL comes up with
+no cartridge - the boot ROM shows its "INSERT GAME" screen - and opens the
+ROM browser so you can pick one. Cartridges can be changed at any time from
+the File menu or by dragging a file onto the window.
+
 The context of ROMFILE is the filename of the an Atari Lynx ROM dump (can be
 either compressed or uncompressed). You can also use switches. By just typing
 ./handy_sdl you get an overview of the options and the keyboard controls.

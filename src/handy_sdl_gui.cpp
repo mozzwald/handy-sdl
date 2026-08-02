@@ -160,6 +160,12 @@ int handy_sdl_gui_init(void)
 	return 1;
 }
 
+void handy_sdl_gui_open_browser(void)
+{
+	show_browser = true;
+	browse_stale = true;
+}
+
 void handy_sdl_gui_set_rom_dir(const char *path)
 {
 	if(path == NULL || *path == '\0') return;

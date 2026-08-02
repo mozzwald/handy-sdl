@@ -83,10 +83,28 @@ void handy_sdl_input_defaults(void)
 static void handy_sdl_pad_open(int index)
 {
 	if(pad != NULL) return;
-	if(!SDL_IsGameController(index)) return;
+
+	if(!SDL_IsGameController(index))
+	{
+		// SDL sees the device but has no mapping for it, so it cannot be used
+		// as a controller. Say so rather than ignoring it silently - this is
+		// the usual reason a pad "isn't detected". A mapping can be supplied
+		// through the SDL_GAMECONTROLLERCONFIG environment variable.
+		const char *name = SDL_JoystickNameForIndex(index);
+		SDL_JoystickGUID guid = SDL_JoystickGetDeviceGUID(index);
+		char guidstr[64];
+		SDL_JoystickGetGUIDString(guid, guidstr, sizeof(guidstr));
+		printf("Input device %d (%s) has no controller mapping, ignoring.\n"
+		       "  GUID: %s\n", index, name ? name : "unknown", guidstr);
+		return;
+	}
 
 	pad = SDL_GameControllerOpen(index);
-	if(pad == NULL) return;
+	if(pad == NULL)
+	{
+		printf("Could not open controller %d: %s\n", index, SDL_GetError());
+		return;
+	}
 
 	SDL_Joystick *js = SDL_GameControllerGetJoystick(pad);
 	pad_id = SDL_JoystickInstanceID(js);
@@ -106,6 +124,13 @@ void handy_sdl_input_init(void)
 {
 	handy_sdl_input_defaults();
 
+	// Sony pads over Bluetooth are driven by SDL's own HIDAPI backends rather
+	// than the kernel joystick device, and those need asking for explicitly on
+	// some builds. Harmless where they are already the default.
+	SDL_SetHint(SDL_HINT_JOYSTICK_HIDAPI, "1");
+	SDL_SetHint(SDL_HINT_JOYSTICK_HIDAPI_PS4, "1");
+	SDL_SetHint(SDL_HINT_JOYSTICK_HIDAPI_PS5, "1");
+
 	// GameController rather than raw Joystick: SDL ships a mapping database,
 	// so ordinary pads work without any per-device configuration.
 	if(SDL_InitSubSystem(SDL_INIT_GAMECONTROLLER) < 0)
@@ -114,7 +139,9 @@ void handy_sdl_input_init(void)
 		return;
 	}
 
-	for(int i = 0; i < SDL_NumJoysticks(); i++) handy_sdl_pad_open(i);
+	int n = SDL_NumJoysticks();
+	if(n == 0) printf("No input devices found.\n");
+	for(int i = 0; i < n; i++) handy_sdl_pad_open(i);
 }
 
 void handy_sdl_input_close(void)
