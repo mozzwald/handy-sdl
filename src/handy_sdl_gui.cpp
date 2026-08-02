@@ -10,6 +10,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <dirent.h>
+#include <sys/stat.h>
+#include <unistd.h>
+#include <algorithm>
+#include <string>
+#include <vector>
 #include <SDL.h>
 
 #include "imgui/imgui.h"
@@ -23,6 +29,94 @@
 static int	gui_ready	= 0;
 static bool	show_about	= false;
 static bool	show_keys	= false;
+static bool	show_browser	= false;
+
+// ROM browser state
+static std::string				browse_dir;
+static std::vector<std::string>	browse_dirs;
+static std::vector<std::string>	browse_files;
+static int						browse_selected = -1;
+static bool						browse_stale    = true;
+
+// Most recently loaded cartridges, newest first.
+static std::vector<std::string>	recent_roms;
+#define RECENT_MAX	8
+
+static const char *rom_extensions[] = { ".lnx", ".lyx", ".o", ".com", ".bin",
+                                        ".zip", ".gz", NULL };
+
+
+static bool handy_sdl_gui_is_rom(const std::string &name)
+{
+	size_t dot = name.find_last_of('.');
+	if(dot == std::string::npos) return false;
+
+	std::string ext = name.substr(dot);
+	for(size_t i = 0; i < ext.size(); i++) ext[i] = tolower(ext[i]);
+
+	for(int i = 0; rom_extensions[i]; i++)
+		if(ext == rom_extensions[i]) return true;
+
+	return false;
+}
+
+static void handy_sdl_gui_scan_dir(void)
+{
+	browse_dirs.clear();
+	browse_files.clear();
+	browse_selected = -1;
+	browse_stale = false;
+
+	DIR *d = opendir(browse_dir.c_str());
+	if(d == NULL) return;
+
+	struct dirent *e;
+	while((e = readdir(d)) != NULL)
+	{
+		std::string name = e->d_name;
+		if(name == ".") continue;
+		// Skip dotfiles but keep ".." so there is always a way back up.
+		if(name != ".." && name[0] == '.') continue;
+
+		std::string full = browse_dir + "/" + name;
+		struct stat st;
+		if(stat(full.c_str(), &st) != 0) continue;
+
+		if(S_ISDIR(st.st_mode))      browse_dirs.push_back(name);
+		else if(handy_sdl_gui_is_rom(name)) browse_files.push_back(name);
+	}
+	closedir(d);
+
+	std::sort(browse_dirs.begin(),  browse_dirs.end());
+	std::sort(browse_files.begin(), browse_files.end());
+}
+
+static void handy_sdl_gui_remember(const char *path)
+{
+	std::string p = path;
+	for(size_t i = 0; i < recent_roms.size(); i++)
+	{
+		if(recent_roms[i] == p) { recent_roms.erase(recent_roms.begin() + i); break; }
+	}
+	recent_roms.insert(recent_roms.begin(), p);
+	if(recent_roms.size() > RECENT_MAX) recent_roms.resize(RECENT_MAX);
+}
+
+// Load a cartridge and, if it worked, remember it and follow it in the browser.
+static void handy_sdl_gui_open(const std::string &path)
+{
+	if(!handy_sdl_load_rom(path.c_str())) return;
+
+	handy_sdl_gui_remember(path.c_str());
+
+	size_t slash = path.find_last_of('/');
+	if(slash != std::string::npos && slash > 0)
+	{
+		browse_dir   = path.substr(0, slash);
+		browse_stale = true;
+	}
+	show_browser = false;
+}
 
 // The menu bar only appears when the pointer is near the top of the window,
 // so it stays out of the way of the game.
@@ -46,8 +140,29 @@ int handy_sdl_gui_init(void)
 	if(!ImGui_ImplSDL2_InitForSDLRenderer(mainWindow, mainRenderer)) return 0;
 	if(!ImGui_ImplSDLRenderer2_Init(mainRenderer)) return 0;
 
+	// Start the browser wherever the emulator was launched from.
+	if(browse_dir.empty())
+	{
+		char cwd[1024];
+		browse_dir = getcwd(cwd, sizeof(cwd)) ? cwd : "/";
+	}
+
+	SDL_EventState(SDL_DROPFILE, SDL_ENABLE);
+
 	gui_ready = 1;
 	return 1;
+}
+
+void handy_sdl_gui_set_rom_dir(const char *path)
+{
+	if(path == NULL || *path == '\0') return;
+
+	std::string p = path;
+	size_t slash = p.find_last_of('/');
+	if(slash != std::string::npos && slash > 0) browse_dir = p.substr(0, slash);
+
+	handy_sdl_gui_remember(path);
+	browse_stale = true;
 }
 
 int handy_sdl_gui_event(SDL_Event *event)
@@ -57,6 +172,18 @@ int handy_sdl_gui_event(SDL_Event *event)
 	ImGui_ImplSDL2_ProcessEvent(event);
 
 	ImGuiIO &io = ImGui::GetIO();
+
+	// Dropping a cartridge on the window loads it. Handled here rather than in
+	// the emulator's event switch because the path has to be freed either way.
+	if(event->type == SDL_DROPFILE)
+	{
+		if(event->drop.file)
+		{
+			handy_sdl_gui_open(event->drop.file);
+			SDL_free(event->drop.file);
+		}
+		return 1;
+	}
 
 	switch(event->type)
 	{
@@ -86,6 +213,28 @@ static void handy_sdl_gui_menubar(void)
 
 	if(ImGui::BeginMenu("File"))
 	{
+		if(ImGui::MenuItem("Open ROM..."))
+		{
+			show_browser = true;
+			browse_stale = true;
+		}
+
+		if(ImGui::BeginMenu("Recent", !recent_roms.empty()))
+		{
+			for(size_t i = 0; i < recent_roms.size(); i++)
+			{
+				// Show the basename; the full path is a tooltip.
+				const std::string &full = recent_roms[i];
+				size_t slash = full.find_last_of('/');
+				std::string label = (slash == std::string::npos) ? full : full.substr(slash + 1);
+
+				if(ImGui::MenuItem(label.c_str())) handy_sdl_gui_open(full);
+				if(ImGui::IsItemHovered()) ImGui::SetTooltip("%s", full.c_str());
+			}
+			ImGui::EndMenu();
+		}
+
+		ImGui::Separator();
 		if(ImGui::MenuItem("Reset"))       mpLynx->Reset();
 		ImGui::Separator();
 		if(ImGui::MenuItem("Quit", "Esc")) handy_sdl_quit();
@@ -127,8 +276,103 @@ static void handy_sdl_gui_menubar(void)
 	ImGui::EndMainMenuBar();
 }
 
+static void handy_sdl_gui_browser(void)
+{
+	if(!show_browser) return;
+
+	if(browse_stale) handy_sdl_gui_scan_dir();
+
+	// Keep the browser inside the emulator window, which can be as small as
+	// 160x102 scaled by one. A fixed size would put the buttons off-screen.
+	ImVec2 avail = ImGui::GetMainViewport()->WorkSize;
+	ImVec2 want(520.0f, 380.0f);
+	if(want.x > avail.x) want.x = avail.x;
+	if(want.y > avail.y) want.y = avail.y;
+
+	ImGui::SetNextWindowSize(want, ImGuiCond_Always);
+	ImGui::SetNextWindowPos(ImGui::GetMainViewport()->WorkPos, ImGuiCond_Always);
+
+	if(ImGui::Begin("Open ROM", &show_browser, ImGuiWindowFlags_NoCollapse))
+	{
+		// Long ROM paths are common, so wrap rather than clipping.
+		ImGui::PushTextWrapPos(0.0f);
+		ImGui::TextDisabled("%s", browse_dir.c_str());
+		ImGui::PopTextWrapPos();
+		ImGui::Separator();
+
+		float footer = ImGui::GetFrameHeightWithSpacing() + ImGui::GetStyle().ItemSpacing.y;
+		if(ImGui::BeginChild("list", ImVec2(0, -footer), true))
+		{
+			int index = 0;
+
+			for(size_t i = 0; i < browse_dirs.size(); i++, index++)
+			{
+				std::string label = "[" + browse_dirs[i] + "]";
+				if(ImGui::Selectable(label.c_str(), browse_selected == index,
+				                     ImGuiSelectableFlags_AllowDoubleClick))
+				{
+					browse_selected = index;
+					if(ImGui::IsMouseDoubleClicked(0))
+					{
+						if(browse_dirs[i] == "..")
+						{
+							size_t slash = browse_dir.find_last_of('/');
+							// Never climb past the root into an empty path.
+							browse_dir = (slash == std::string::npos || slash == 0)
+							             ? "/" : browse_dir.substr(0, slash);
+						}
+						else
+						{
+							if(browse_dir == "/") browse_dir += browse_dirs[i];
+							else                  browse_dir += "/" + browse_dirs[i];
+						}
+						browse_stale = true;
+					}
+				}
+			}
+
+			for(size_t i = 0; i < browse_files.size(); i++, index++)
+			{
+				if(ImGui::Selectable(browse_files[i].c_str(), browse_selected == index,
+				                     ImGuiSelectableFlags_AllowDoubleClick))
+				{
+					browse_selected = index;
+					if(ImGui::IsMouseDoubleClicked(0))
+					{
+						std::string sep = (browse_dir == "/") ? "" : "/";
+						handy_sdl_gui_open(browse_dir + sep + browse_files[i]);
+					}
+				}
+			}
+		}
+		ImGui::EndChild();
+
+		bool have_file = browse_selected >= (int)browse_dirs.size();
+
+		if(!have_file) ImGui::BeginDisabled();
+		if(ImGui::Button("Load"))
+		{
+			size_t i = (size_t)browse_selected - browse_dirs.size();
+			if(i < browse_files.size())
+			{
+				std::string sep = (browse_dir == "/") ? "" : "/";
+				handy_sdl_gui_open(browse_dir + sep + browse_files[i]);
+			}
+		}
+		if(!have_file) ImGui::EndDisabled();
+
+		ImGui::SameLine();
+		if(ImGui::Button("Cancel")) show_browser = false;
+		ImGui::SameLine();
+		ImGui::TextDisabled("double-click to open, or drag a file onto the window");
+	}
+	ImGui::End();
+}
+
 static void handy_sdl_gui_windows(void)
 {
+	handy_sdl_gui_browser();
+
 	if(show_keys)
 	{
 		ImGui::SetNextWindowSize(ImVec2(320, 0), ImGuiCond_FirstUseEver);
@@ -180,7 +424,7 @@ void handy_sdl_gui_frame(void)
 	else if(!ImGui::IsAnyItemActive() && !ImGui::IsPopupOpen("", ImGuiPopupFlags_AnyPopupId))
 		menu_active = 0;
 
-	if(menu_active || show_keys || show_about)
+	if(menu_active || show_keys || show_about || show_browser)
 	{
 		SDL_ShowCursor(SDL_ENABLE);
 		handy_sdl_gui_menubar();

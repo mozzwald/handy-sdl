@@ -36,6 +36,10 @@ int  handy_sdl_comlynx_parse(const char *spec);
 // up whatever sits on the other end.
 void handy_sdl_comlynx_trace(int on);
 
+// Re-arm the Tx callback and cable flag after the emulation object has been
+// replaced, as happens when a new cartridge is loaded.
+void handy_sdl_comlynx_reattach(void);
+
 // Bring up the socket and attach to the emulated UART. Safe to call when no
 // spec was given, in which case it does nothing. Returns 1 if enabled.
 int  handy_sdl_comlynx_init(void);

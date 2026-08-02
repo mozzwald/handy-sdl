@@ -80,6 +80,7 @@ extern int				emulation;              // Emulation enabled
 
 inline	int 	handy_sdl_update(void);
 		void 	handy_sdl_rom_info(void);
+		int 	handy_sdl_load_rom(const char *path);
 		int 	main(int argc, char *argv[]);
 		void	handy_sdl_quit(void);
 #endif

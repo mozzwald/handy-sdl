@@ -16,6 +16,10 @@
 // handy_sdl_video_setup(). Returns 1 on success.
 int  handy_sdl_gui_init(void);
 
+// Point the browser at the directory holding this cartridge, and record it as
+// the first recent entry. Called with whatever was named on the command line.
+void handy_sdl_gui_set_rom_dir(const char *path);
+
 // Feed one SDL event to the GUI. Returns 1 if the GUI consumed it, in which
 // case the emulator should ignore it.
 int  handy_sdl_gui_event(SDL_Event *event);

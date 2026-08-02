@@ -229,6 +229,52 @@ void handy_sdl_rom_info(void)
 	}
 
 }
+/*
+	Name	            : 	handy_sdl_load_rom
+	Parameters          : 	path to a cartridge image
+	Function			:   Swap the cartridge without restarting.
+
+	Information			:	Builds the replacement before tearing down the old
+							one, so a bad file leaves the running game alone
+							rather than killing the emulator.
+
+							Everything registered against the old CSystem has
+							to be re-armed: Mikey's display callback and the
+							ComLynx transmit callback both live on the object
+							being replaced. Rotation is per cartridge too, so
+							the texture may need rebuilding at a new size.
+*/
+int handy_sdl_load_rom(const char *path)
+{
+	CSystem *replacement = NULL;
+
+	if(path == NULL || *path == '\0') return 0;
+
+	try {
+		replacement = new CSystem((char *)path, "lynxboot.img");
+	} catch (CLynxException &err) {
+		cerr << "Could not load " << path << ": "
+		     << err.mMsg.str() << ": " << err.mDesc.str() << endl;
+		return 0;
+	}
+
+	// Keep the audio callback away from a half-swapped machine.
+	SDL_PauseAudio(1);
+
+	delete mpLynx;
+	mpLynx = replacement;
+
+	handy_sdl_rom_info();
+	handy_sdl_video_reconfigure();
+	handy_sdl_attach_display();
+	handy_sdl_comlynx_reattach();
+
+	SDL_PauseAudio(0);
+
+	printf("Loaded %s\n", path);
+	return 1;
+}
+
 void handy_sdl_quit(void)
 {
 
@@ -357,6 +403,7 @@ int main(int argc, char *argv[])
 	{
 		printf("Warning: could not start the GUI, continuing without it\n");
 	}
+	handy_sdl_gui_set_rom_dir(argv[1]);
 
 	// Initialise Handy/SDL audio
 	printf("Initialising SDL Audio...     ");

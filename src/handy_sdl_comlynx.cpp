@@ -139,6 +139,19 @@ void handy_sdl_comlynx_trace(int on)
 	trace = on;
 }
 
+/*
+	The Tx callback and the cable flag live on the CSystem object, so both are
+	lost when the cartridge changes and a new one is built. Re-arm them.
+*/
+void handy_sdl_comlynx_reattach(void)
+{
+	if(mode==MODE_OFF || mpLynx==NULL) return;
+
+	mpLynx->ComLynxTxCallback(comlynx_tx_callback, (UOBJREF)0);
+	mpLynx->ComLynxCable(TRUE);
+	cable_asserted = 1;
+}
+
 int handy_sdl_comlynx_parse(const char *spec)
 {
 	if(spec==NULL) return 0;
