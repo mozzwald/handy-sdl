@@ -37,10 +37,13 @@ printf("                              goes out the socket and vice versa. Use it
 printf("                              to link two emulators, to reach a real Lynx\n");
 printf("                              over a bridge, or to attach any external\n");
 printf("                              ComLynx device.\n");
-printf(" -comlynxtrace              : Log every byte crossing the link\n");
-printf("                              Both are startup defaults only; the link\n");
+printf("                              These are startup defaults only; the link\n");
 printf("                              can be set up, stopped and restarted at\n");
 printf("                              any time from the ComLynx menu.\n");
+printf(" -comlynxtrace              : Log every byte crossing the link\n");
+printf(" -comlynxnorxgate           : Latch received bytes even while RXINTEN is\n");
+printf("                              clear. Mikey gates the receiver itself, so\n");
+printf("                              this is wrong; kept for debugging only.\n");
 printf("\n");
 printf(" Keyboard controls:\n");
 printf("\n");

@@ -94,13 +94,25 @@ class CSystem;
 #define LINE_WIDTH		160
 #define	LINE_SIZE		80
 
-// Set by -comlynxtrace; see handy_sdl_comlynx.cpp. Every trace point is gated
-// on it, so a normal run pays only the branch.
+// Set by -comlynxtrace; see handy_sdl_comlynx.cpp. Every trace point below is
+// gated on it, so a normal run pays only the branch.
 extern int gComLynxTrace;
+
+// RXINTEN gates the receiver itself and not merely the interrupt. On by
+// default; -comlynxnorxgate restores the old always-latch behaviour.
+extern int gComLynxRxGate;
 
 #define UART_TX_INACTIVE	0x80000000
 #define UART_RX_INACTIVE	0x80000000
 #define UART_BREAK_CODE		0x00008000
+// NOT the hardware's receive buffer. Mikey itself holds two bytes - one in the
+// shift register, one in the holding register - and that part is modelled by
+// mUART_RX_DATA/mUART_RX_READY, which already raise an overrun when a byte
+// lands on an unread one. This queue is the staging area for bytes that have
+// not been clocked in off the wire yet, so it stands in for the transport
+// pipeline rather than for any register. Shrinking it to 2 to "match the
+// hardware" conflates the two and drops bytes a real Lynx would still have
+// been receiving serially.
 #define	UART_MAX_RX_QUEUE	32
 
 // Parity of the eight data bits. The ninth bit on the wire is derived from
@@ -564,9 +576,11 @@ class CMikie : public CLynxBase
 						if(!mUART_RX_COUNTDOWN)
 						{
 							// Fetch a byte from the input queue
+							int rx_arrived=0,rx_byte=0;
 							if(mUART_Rx_waiting>0)
 							{
-								mUART_RX_DATA=mUART_Rx_input_queue[mUART_Rx_output_ptr];
+								rx_byte=mUART_Rx_input_queue[mUART_Rx_output_ptr];
+								rx_arrived=1;
 								mUART_Rx_output_ptr=(mUART_Rx_output_ptr+1)%UART_MAX_RX_QUEUE;
 								mUART_Rx_waiting--;
 								TRACE_MIKIE2("Update() - RX Byte output ptr=%02d waiting=%02d",mUART_Rx_output_ptr,mUART_Rx_waiting);
@@ -588,25 +602,45 @@ class CMikie : public CLynxBase
 								TRACE_MIKIE0("Update() - RX Byte nothing waiting, deactivated");
 							}
 
-							// If RX_READY already set then we have an overrun
-							// as previous byte hasnt been read
-							if(mUART_RX_READY) mUART_Rx_overun_error=1;
-
-							// The ninth bit travels with the byte. Report a
-							// parity error when it disagrees with what the
-							// current SERCTL settings call for; with PAREN
-							// clear this is the mark/space marker instead and
-							// the receiver leaves the comparison to software.
-							mUART_Rx_parity_error=0;
-							if(mUART_PARITY_ENABLE)
+							// RXINTEN gates the receiver itself, not merely
+							// the interrupt, so a byte clocked in while it is
+							// clear is dropped rather than left sitting in
+							// SERDAT. cc65's ComLynx driver masks RX for the
+							// duration of its own transmission and describes
+							// that as "no receive while transmitting"; without
+							// this the tail of that transmission stays in the
+							// receiver and becomes the first byte the program
+							// reads back, which desynchronises every reply.
+							if(gComLynxRxGate && !mUART_RX_IRQ_ENABLE)
 							{
-								int parbit=(mUART_RX_DATA&0x0100)?1:0;
-								if(parbit!=UartExpectedParityBit((int)mUART_RX_DATA))
-									mUART_Rx_parity_error=1;
+								// Clocked off the wire and discarded. No
+								// SERDAT update, no RXRDY, and no overrun -
+								// nothing was held to be overrun.
 							}
+							else
+							{
+								if(rx_arrived) mUART_RX_DATA=rx_byte;
 
-							// Flag byte as being recvd
-							mUART_RX_READY=1;
+								// If RX_READY already set then we have an overrun
+								// as previous byte hasnt been read
+								if(mUART_RX_READY) mUART_Rx_overun_error=1;
+
+								// The ninth bit travels with the byte. Report a
+								// parity error when it disagrees with what the
+								// current SERCTL settings call for; with PAREN
+								// clear this is the mark/space marker instead and
+								// the receiver leaves the comparison to software.
+								mUART_Rx_parity_error=0;
+								if(mUART_PARITY_ENABLE)
+								{
+									int parbit=(mUART_RX_DATA&0x0100)?1:0;
+									if(parbit!=UartExpectedParityBit((int)mUART_RX_DATA))
+										mUART_Rx_parity_error=1;
+								}
+
+								// Flag byte as being recvd
+								mUART_RX_READY=1;
+							}
 						}
 						else if(!(mUART_RX_COUNTDOWN&UART_RX_INACTIVE))
 						{

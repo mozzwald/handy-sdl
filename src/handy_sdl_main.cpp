@@ -384,6 +384,7 @@ int main(int argc, char *argv[])
 			}
 		}
 		if (!strcmp(argv[i], "-comlynxtrace"))	handy_sdl_comlynx_trace(1);
+		if (!strcmp(argv[i], "-comlynxnorxgate"))	gComLynxRxGate = 0;
 	}
 
 	// Initalising SDL for Audio and Video support

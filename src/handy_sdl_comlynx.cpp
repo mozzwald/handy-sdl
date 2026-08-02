@@ -85,6 +85,7 @@ static int		trace = 0;
 // Mikey needs to see the trace flag too, so the UART register traffic can be
 // logged alongside the wire bytes. Non-static for that reason.
 int				gComLynxTrace = 0;
+int				gComLynxRxGate = 1;
 
 
 static void comlynx_set_nonblocking(SOCKET s)
