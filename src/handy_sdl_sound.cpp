@@ -65,6 +65,17 @@
 #include "handy_sdl_main.h"
 #include "handy_sdl_sound.h"
 
+// Byte value that represents silence in the opened format.
+static Uint8 handy_sdl_audio_silence = 0x80;
+
+// The emulator produces samples in bursts tied to frame updates while the
+// device consumes them at a steady rate. Both average 22050 bytes/sec, so
+// with no slack the buffer level random-walks into zero constantly and every
+// dip becomes an audible dropout. Let a cushion build before starting to
+// consume, and rebuild it after any underrun.
+#define HANDY_AUDIO_PRIME_BYTES		(1024 * 3)
+static int handy_sdl_audio_primed = 0;
+
 /*  
 	Name	            : 	handy_sdl_audio_callback
 	Parameters          : 	userdata (NULL, not used)
@@ -87,18 +98,49 @@
 */
 void handy_sdl_audio_callback(void *userdata, Uint8 *stream, int len)
 {
+	int avail;
 
 #ifdef HANDY_SDL_DEBUG
 	printf("handy_sdl_audio_callback - DEBUG\n");
 	printf("gAudioBufferPointer : %d - len : %d\n", gAudioBufferPointer, len);
 #endif
 
-	if( ( (int)gAudioBufferPointer >= len) && (gAudioBufferPointer != 0) && (!gSystemHalt) ) {
-		SDL_MixAudio( stream, gAudioBuffer,len, SDL_MIX_MAXVOLUME );
-		memmove(gAudioBuffer, gAudioBuffer+len, gAudioBufferPointer - len);
-		gAudioBufferPointer = gAudioBufferPointer - len;
+	avail = gSystemHalt ? 0 : (int)gAudioBufferPointer;
+
+	if(!handy_sdl_audio_primed)
+	{
+		if(avail < HANDY_AUDIO_PRIME_BYTES)
+		{
+			SDL_memset(stream, handy_sdl_audio_silence, len);
+			return;
+		}
+		handy_sdl_audio_primed = 1;
 	}
 
+	if(avail > len) avail = len;
+
+	if(avail > 0)
+	{
+		// A straight copy, not SDL_MixAudio(): the emulator is the only thing
+		// producing audio, so there is nothing to mix against, and mixing onto
+		// a silence-filled buffer would bias every sample.
+		SDL_memcpy(stream, gAudioBuffer, avail);
+		memmove(gAudioBuffer, gAudioBuffer + avail, gAudioBufferPointer - avail);
+		gAudioBufferPointer -= avail;
+	}
+
+	if(avail < len)
+	{
+		// SDL2 does not clear this buffer before calling us, unlike SDL 1.2.
+		// Leaving the tail untouched replays whatever was in it last time,
+		// which is what made underruns sound like distorted, stuttering audio
+		// rather than a brief silence.
+		SDL_memset(stream + avail, handy_sdl_audio_silence, len - avail);
+
+		// Ran dry, so rebuild the cushion rather than limping along
+		// underrunning on every single callback.
+		handy_sdl_audio_primed = 0;
+	}
 }
 
 /*  
@@ -144,13 +186,22 @@ int handy_sdl_audio_init(void)
 	desired->callback	= handy_sdl_audio_callback; // Our audio callback
 	desired->userdata	= NULL;						// N/A
 
-	/* Check if we can get our desired SDL audio output */
-	if(SDL_OpenAudio(desired, obtained) < 0) {
+	/* Check if we can get our desired SDL audio output.
+	   Passing "obtained" means SDL is free to hand back a different format and
+	   leave the conversion to us, which this code does not do - so ask for our
+	   format outright and let SDL convert internally if the hardware differs. */
+	if(SDL_OpenAudio(desired, NULL) < 0) {
 		fprintf(stderr, "ERROR : Couldn't open audio: %s\n", SDL_GetError());
-		return 0;  
-    }
+		free(desired);
+		free(obtained);
+		return 0;
+	}
+
+	// Silence for unsigned 8-bit is 128, not 0.
+	handy_sdl_audio_silence = 0x80;
 
 	free(desired);
+	free(obtained);
 	
 	/* Enable SDL audio */
   	SDL_PauseAudio(0);
