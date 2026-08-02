@@ -24,12 +24,19 @@
 
 #include "handy_sdl_main.h"
 #include "handy_sdl_graphics.h"
+#include "handy_sdl_handling.h"
 #include "handy_sdl_gui.h"
 
 static int	gui_ready	= 0;
 static bool	show_about	= false;
 static bool	show_keys	= false;
 static bool	show_browser	= false;
+static bool	show_input	= false;
+
+// While non-negative, the next key or pad button pressed is bound to this
+// Lynx button instead of being acted on normally.
+static int	capture_button	= -1;
+static bool	capture_is_pad	= false;
 
 // ROM browser state
 static std::string				browse_dir;
@@ -173,6 +180,27 @@ int handy_sdl_gui_event(SDL_Event *event)
 
 	ImGuiIO &io = ImGui::GetIO();
 
+	// Rebinding: swallow the next press and turn it into a binding.
+	if(capture_button >= 0)
+	{
+		if(!capture_is_pad && event->type == SDL_KEYDOWN)
+		{
+			// Escape abandons the capture rather than binding itself.
+			if(event->key.keysym.scancode != SDL_SCANCODE_ESCAPE)
+				handy_sdl_input_set_key(capture_button, event->key.keysym.scancode);
+			capture_button = -1;
+			return 1;
+		}
+		if(capture_is_pad && event->type == SDL_CONTROLLERBUTTONDOWN)
+		{
+			handy_sdl_input_set_pad(capture_button, event->cbutton.button);
+			capture_button = -1;
+			return 1;
+		}
+		// Let a click elsewhere cancel, so a capture cannot get stuck.
+		if(event->type == SDL_MOUSEBUTTONDOWN) capture_button = -1;
+	}
+
 	// Dropping a cartridge on the window loads it. Handled here rather than in
 	// the emulator's event switch because the path has to be freed either way.
 	if(event->type == SDL_DROPFILE)
@@ -263,6 +291,17 @@ static void handy_sdl_gui_menubar(void)
 		if(ImGui::MenuItem("4x")) handy_sdl_set_window_scale(4);
 		ImGui::Separator();
 		ImGui::TextDisabled("The window can also be dragged to any size.");
+		ImGui::EndMenu();
+	}
+
+	if(ImGui::BeginMenu("Input"))
+	{
+		if(ImGui::MenuItem("Configure controls...")) show_input = true;
+		if(ImGui::MenuItem("Swap A and B"))          handy_sdl_input_swap_ab();
+		if(ImGui::MenuItem("Reset to defaults"))     handy_sdl_input_defaults();
+		ImGui::Separator();
+		const char *padname = handy_sdl_input_pad_name();
+		ImGui::TextDisabled("%s", padname ? padname : "No controller");
 		ImGui::EndMenu();
 	}
 
@@ -369,9 +408,89 @@ static void handy_sdl_gui_browser(void)
 	ImGui::End();
 }
 
+static void handy_sdl_gui_input_window(void)
+{
+	if(!show_input) return;
+
+	ImVec2 avail = ImGui::GetMainViewport()->WorkSize;
+	ImVec2 want(420.0f, 300.0f);
+	if(want.x > avail.x) want.x = avail.x;
+	if(want.y > avail.y) want.y = avail.y;
+
+	ImGui::SetNextWindowSize(want, ImGuiCond_Always);
+	ImGui::SetNextWindowPos(ImGui::GetMainViewport()->WorkPos, ImGuiCond_Always);
+
+	if(ImGui::Begin("Controls", &show_input, ImGuiWindowFlags_NoCollapse))
+	{
+		const char *padname = handy_sdl_input_pad_name();
+		ImGui::TextDisabled("Controller: %s", padname ? padname : "none");
+		ImGui::Separator();
+
+		if(ImGui::BeginTable("bindings", 3, ImGuiTableFlags_SizingStretchProp))
+		{
+			for(int i = 0; i < HANDY_BTN_COUNT; i++)
+			{
+				ImGui::TableNextRow();
+
+				ImGui::TableSetColumnIndex(0);
+				ImGui::Text("%s", handy_sdl_input_name(i));
+
+				// Keyboard binding
+				ImGui::TableSetColumnIndex(1);
+				ImGui::PushID(i * 2);
+				{
+					SDL_Scancode sc = handy_sdl_input_get_key(i);
+					const char *label;
+					if(capture_button == i && !capture_is_pad) label = "press a key...";
+					else if(sc == SDL_SCANCODE_UNKNOWN)        label = "-";
+					else                                      label = SDL_GetScancodeName(sc);
+
+					if(ImGui::Button(label, ImVec2(-1, 0)))
+					{
+						capture_button = i;
+						capture_is_pad = false;
+					}
+				}
+				ImGui::PopID();
+
+				// Controller binding
+				ImGui::TableSetColumnIndex(2);
+				ImGui::PushID(i * 2 + 1);
+				{
+					int pb = handy_sdl_input_get_pad(i);
+					const char *label;
+					if(capture_button == i && capture_is_pad) label = "press a button...";
+					else if(pb < 0)                           label = "-";
+					else label = SDL_GameControllerGetStringForButton((SDL_GameControllerButton)pb);
+					if(label == NULL) label = "?";
+
+					if(ImGui::Button(label, ImVec2(-1, 0)))
+					{
+						capture_button = i;
+						capture_is_pad = true;
+					}
+				}
+				ImGui::PopID();
+			}
+			ImGui::EndTable();
+		}
+
+		ImGui::Separator();
+		if(ImGui::Button("Reset to defaults")) handy_sdl_input_defaults();
+		ImGui::SameLine();
+		if(ImGui::Button("Swap A/B"))          handy_sdl_input_swap_ab();
+		ImGui::SameLine();
+		if(ImGui::Button("Close"))             show_input = false;
+
+		ImGui::TextDisabled("Escape cancels a rebind.");
+	}
+	ImGui::End();
+}
+
 static void handy_sdl_gui_windows(void)
 {
 	handy_sdl_gui_browser();
+	handy_sdl_gui_input_window();
 
 	if(show_keys)
 	{
@@ -424,7 +543,7 @@ void handy_sdl_gui_frame(void)
 	else if(!ImGui::IsAnyItemActive() && !ImGui::IsPopupOpen("", ImGuiPopupFlags_AnyPopupId))
 		menu_active = 0;
 
-	if(menu_active || show_keys || show_about || show_browser)
+	if(menu_active || show_keys || show_about || show_browser || show_input)
 	{
 		SDL_ShowCursor(SDL_ENABLE);
 		handy_sdl_gui_menubar();

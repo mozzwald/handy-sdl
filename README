@@ -102,8 +102,14 @@ With ESC you can easily stop Handy/SDL which will get you back to the prompt
 of your shell. There is no confirmation, and the emulator has no other
 hotkeys: everything else is set on the command line at startup.
 
-The bindings above cannot currently be changed, and there is no joystick or
-gamepad support.
+These are the defaults. They can be changed while the emulator is running
+from the Input menu, which also swaps A and B if you prefer the labels to
+match the console.
+
+Game controllers are supported through SDL's controller database, so an
+ordinary pad works without any configuration and can be plugged in or
+unplugged while running. The left stick acts as a d-pad in addition to
+whatever the d-pad itself is bound to.
 
 
 -------------------

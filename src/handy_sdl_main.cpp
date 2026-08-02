@@ -282,6 +282,7 @@ void handy_sdl_quit(void)
     SDL_PauseAudio(1);
 	emulation   = -1;
 
+	handy_sdl_input_close();
 	handy_sdl_gui_close();
 	handy_sdl_comlynx_close();
 	handy_sdl_video_close();
@@ -405,6 +406,9 @@ int main(int argc, char *argv[])
 	}
 	handy_sdl_gui_set_rom_dir(argv[1]);
 
+	// Input bindings and controller support
+	handy_sdl_input_init();
+
 	// Initialise Handy/SDL audio
 	printf("Initialising SDL Audio...     ");
 	if(handy_sdl_audio_init())
@@ -419,38 +423,33 @@ int main(int argc, char *argv[])
 	printf("Starting Lynx Emulation...\n");
 	while(!emulation)
 	{
-		// Initialise Handy button events
-		int OldKeyMask, KeyMask = mpLynx->GetButtonData();
-		OldKeyMask = KeyMask;
-
 		// Getting events for keyboard and/or joypad handling
 		while(SDL_PollEvent(&handy_sdl_event))
 		{
 			// Let the GUI look first. When it takes an event - typing into a
 			// text field, say - it must not also reach the Lynx.
 			if(handy_sdl_gui_event(&handy_sdl_event)) continue;
+			if(handy_sdl_input_event(&handy_sdl_event)) continue;
 
 			switch(handy_sdl_event.type)
 			{
-				case SDL_KEYUP:
-					KeyMask = handy_sdl_on_key_up(handy_sdl_event.key, KeyMask);
-					break;
 				case SDL_KEYDOWN:
-					KeyMask = handy_sdl_on_key_down(handy_sdl_event.key, KeyMask);
+					// Escape is the power switch, and is deliberately not a
+					// remappable Lynx button.
+					if(handy_sdl_event.key.keysym.sym == SDLK_ESCAPE) handy_sdl_quit();
 					break;
 				case SDL_QUIT:
 					handy_sdl_quit();
 					break;
 				default:
-					// Note: this used to clear KeyMask, so any event that was
-					// not a keypress silently released every Lynx button.
 					break;
 			}
 		}
 
-		// Checking if we had SDL handling events and then we'll update the Handy button events.
-		if (OldKeyMask != KeyMask)
-			mpLynx->SetButtonData(KeyMask);
+		// Rebuild the button state from what is actually held down. The GUI
+		// gets first refusal on the keyboard so that typing a hostname into a
+		// text field does not also play the game.
+		handy_sdl_input_poll(!handy_sdl_gui_wants_keyboard());
 
 		// Update TimerCount
 		gTimerCount++;

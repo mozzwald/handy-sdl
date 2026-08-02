@@ -24,33 +24,14 @@
 //                       Handy/SDL - An Atari Lynx Emulator                 //
 //                             Copyright (c) 2005                           //
 //                                SDLemu Team                               //
-//                                                                          //
-//                          Based upon Handy v0.90 WIN32                    // 
-//                            Copyright (c) 1996,1997                       //
-//                                  K. Wilkins                              //
 //////////////////////////////////////////////////////////////////////////////
 // handy_sdl_handling.h                                                     //
 //////////////////////////////////////////////////////////////////////////////
 //                                                                          //
-// This is the Handy/SDL handling header file. It manages the handling      //
-// functions for emulating the Atari Lynx emulator using the SDL Library.   //
+// Input handling. The Lynx pad is a bitmask, so the button state is polled //
+// once per frame and rebuilt from scratch rather than accumulated across   //
+// key events - a stray event can then never leave a button stuck on.       //
 //                                                                          //
-//    N. Wagenaar                                                           //
-// December 2005                                                            //
-//                                                                          //
-//////////////////////////////////////////////////////////////////////////////
-// Revision History:                                                        //
-// -----------------                                                        //
-//                                                                          //
-// December 2005 :                                                          //
-//  Since the 14th of April, the WIN32 of Handy (written by Keith Wilkins)  //
-//  Handy has become OpenSource. Handy/SDL v0.82 R1 was based upon the old  //
-//  v0.82 sources and was released closed source.                           //
-//                                                                          //
-//  Because of this event, the new Handy/SDL will be released as OpenSource //
-//  but is rewritten from scratch because of lost sources (tm). The SDLemu  //
-//  team has tried to bring Handy/SDL v0.1 with al the functions from the   //
-//  closed source version.                                                  //
 //////////////////////////////////////////////////////////////////////////////
 
 #ifndef __HANDY_SDL_HANDLING_H__
@@ -60,9 +41,42 @@
 #include <stdlib.h>
 #include <string.h>
 #include <SDL.h>
-#include <SDL_main.h>
-#include <SDL_timer.h>
- 
-int		handy_sdl_on_key_up(SDL_KeyboardEvent key, int mask);
-int		handy_sdl_on_key_down(SDL_KeyboardEvent key, int mask);
+
+// The Lynx controls, in the order the GUI lists them.
+enum {
+	HANDY_BTN_UP = 0,
+	HANDY_BTN_DOWN,
+	HANDY_BTN_LEFT,
+	HANDY_BTN_RIGHT,
+	HANDY_BTN_A,
+	HANDY_BTN_B,
+	HANDY_BTN_OPT1,
+	HANDY_BTN_OPT2,
+	HANDY_BTN_PAUSE,
+	HANDY_BTN_COUNT
+};
+
+void        handy_sdl_input_init(void);
+void        handy_sdl_input_close(void);
+
+// Handle controller hot-plug. Returns 1 if the event was an input device
+// arriving or leaving.
+int         handy_sdl_input_event(SDL_Event *event);
+
+// Read the keyboard and pad, and push the resulting mask into the emulation.
+// "allow_keyboard" is cleared while the GUI has keyboard focus.
+void        handy_sdl_input_poll(int allow_keyboard);
+
+// Binding accessors, for the GUI remapping window.
+const char *handy_sdl_input_name(int button);
+SDL_Scancode handy_sdl_input_get_key(int button);
+void        handy_sdl_input_set_key(int button, SDL_Scancode code);
+int         handy_sdl_input_get_pad(int button);
+void        handy_sdl_input_set_pad(int button, int pad_button);
+void        handy_sdl_input_defaults(void);
+void        handy_sdl_input_swap_ab(void);
+
+// Name of the attached controller, or NULL if there is none.
+const char *handy_sdl_input_pad_name(void);
+
 #endif

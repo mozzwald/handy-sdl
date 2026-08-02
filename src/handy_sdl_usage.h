@@ -46,6 +46,8 @@ printf(" F1                   : Lynx OPTION 1\n");
 printf(" F2                   : Lynx OPTION 2\n");
 printf(" Escape               : Power off and exit\n");
 printf("\n");
-printf(" The bindings are fixed; there is no joystick support yet.\n");
+printf(" These are the defaults. Bindings can be changed at runtime from the\n");
+printf(" Input menu, which also handles game controllers. Any pad SDL knows\n");
+printf(" about works without configuration; the left stick acts as a d-pad.\n");
 
 }

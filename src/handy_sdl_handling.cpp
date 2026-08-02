@@ -24,246 +24,215 @@
 //                       Handy/SDL - An Atari Lynx Emulator                 //
 //                             Copyright (c) 2005                           //
 //                                SDLemu Team                               //
-//                                                                          //
-//                          Based upon Handy v0.90 WIN32                    // 
-//                            Copyright (c) 1996,1997                       //
-//                                  K. Wilkins                              //
 //////////////////////////////////////////////////////////////////////////////
-// handy_sdl_graphics.cpp                                                   //
-//////////////////////////////////////////////////////////////////////////////
-//                                                                          //
-// This is the Handy/SDL handling. It manages the handling functions        //
-// of the keyboard and/or joypad for emulating the Atari Lynx emulator      //
-// using the SDL Library.             										//
-//                                                                          //
-//    N. Wagenaar                                                           //
-// December 2005                                                            //
-//                                                                          //
-//////////////////////////////////////////////////////////////////////////////
-// Revision History:                                                        //
-// -----------------                                                        //
-//                                                                          //
-// December 2005 :                                                          //
-//  Since the 14th of April, the WIN32 of Handy (written by Keith Wilkins)  //
-//  Handy has become OpenSource. Handy/SDL v0.82 R1 was based upon the old  //
-//  v0.82 sources and was released closed source.                           //
-//                                                                          //
-//  Because of this event, the new Handy/SDL will be released as OpenSource //
-//  but is rewritten from scratch because of lost sources (tm). The SDLemu  //
-//  team has tried to bring Handy/SDL v0.1 with al the functions from the   //
-//  closed source version.                                                  //
+// handy_sdl_handling.cpp                                                   //
 //////////////////////////////////////////////////////////////////////////////
 
-#include <cstdio>
-#include <cstdlib>
-#include <cstring>
-#include <ctime>
-#include <cctype>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include <SDL.h>
-#include <SDL_main.h>
-#include <SDL_timer.h>
 
 #include "handy_sdl_main.h"
 #include "handy_sdl_handling.h"
 
-int  handy_sdl_on_key_down(SDL_KeyboardEvent key, int mask)
+// Analog sticks are mapped onto the d-pad. A third of full deflection is far
+// enough to be deliberate without needing a precise centre.
+#define PAD_AXIS_DEADZONE	10000
+
+typedef struct {
+	const char			*name;
+	ULONG				 mask;		// Lynx button bit, from susie.h
+	SDL_Scancode		 key;
+	int					 pad;		// SDL_GameControllerButton, or -1
+} HANDY_BINDING;
+
+static HANDY_BINDING bindings[HANDY_BTN_COUNT];
+
+static SDL_GameController	*pad = NULL;
+static SDL_JoystickID		 pad_id = -1;
+
+
+void handy_sdl_input_defaults(void)
 {
-	
-/*    
-    if(joy) {
-    	x_move = SDL_JoystickGetAxis(joystick, 0);
-		y_move = SDL_JoystickGetAxis(joystick, 1);
-    }
-*/  
+	// The historical Handy/SDL layout. Note A is the left hand key and B the
+	// right hand one, which is the opposite way round to the console's labels
+	// but is what this emulator has always done.
+	static const struct { const char *name; ULONG mask; SDL_Scancode key; int pad; }
+	defaults[HANDY_BTN_COUNT] = {
+		{ "Up",       BUTTON_UP,    SDL_SCANCODE_UP,     SDL_CONTROLLER_BUTTON_DPAD_UP    },
+		{ "Down",     BUTTON_DOWN,  SDL_SCANCODE_DOWN,   SDL_CONTROLLER_BUTTON_DPAD_DOWN  },
+		{ "Left",     BUTTON_LEFT,  SDL_SCANCODE_LEFT,   SDL_CONTROLLER_BUTTON_DPAD_LEFT  },
+		{ "Right",    BUTTON_RIGHT, SDL_SCANCODE_RIGHT,  SDL_CONTROLLER_BUTTON_DPAD_RIGHT },
+		{ "A",        BUTTON_A,     SDL_SCANCODE_Z,      SDL_CONTROLLER_BUTTON_A          },
+		{ "B",        BUTTON_B,     SDL_SCANCODE_X,      SDL_CONTROLLER_BUTTON_B          },
+		{ "Option 1", BUTTON_OPT1,  SDL_SCANCODE_F1,     SDL_CONTROLLER_BUTTON_LEFTSHOULDER  },
+		{ "Option 2", BUTTON_OPT2,  SDL_SCANCODE_F2,     SDL_CONTROLLER_BUTTON_RIGHTSHOULDER },
+		{ "Pause",    BUTTON_PAUSE, SDL_SCANCODE_RETURN, SDL_CONTROLLER_BUTTON_START      }
+	};
 
-    switch(key.keysym.sym) {
-    case SDLK_LEFT: {  // Lynx LEFT
-		mask|=BUTTON_LEFT;
-		break;
-    }
-    case SDLK_RIGHT: { // Lynx RIGHT
-		mask|=BUTTON_RIGHT;
-		break;
-    }
-	
-    case SDLK_UP: { // Lynx UP
-		mask|=BUTTON_UP;
-		break;
-    }
-	
-    case SDLK_DOWN: { // Lynx DOWN
-		mask|=BUTTON_DOWN;
-		break;
-    }
-	
-    case SDLK_RETURN: { // Lynx PAUSE
-		mask|=BUTTON_PAUSE;
-		break;
-    }
-	
-    case SDLK_x: { // Lynx B
-        mask|=BUTTON_B;
-		break;
-    }
-	
-    case SDLK_z: { // Lynx A
-		mask|=BUTTON_A; 
-		break;
-    }
-	
-	case SDLK_F1: { // Lynx Option 1
-		mask|=BUTTON_OPT1;
-		break;
+	for(int i = 0; i < HANDY_BTN_COUNT; i++)
+	{
+		bindings[i].name = defaults[i].name;
+		bindings[i].mask = defaults[i].mask;
+		bindings[i].key  = defaults[i].key;
+		bindings[i].pad  = defaults[i].pad;
 	}
-
-	case SDLK_F2: { // Lynx Option 2
-		mask|=BUTTON_OPT2;
-		break;
-	}
-
-   
-
-    case SDLK_ESCAPE: { // ON/OFF key (well, definately more off :-)
-       handy_sdl_quit();				
-    }
-
-	default: {
-	   break;
-	}
-
-	}
-	
-/*    
-    if(joy) {
-    if(x_move > 32768/2)
-
-    	eventstate |= ( HID_EVENT_RIGHT ); // seems to work fine
-    			
-    if(x_move < -32768/2)
-    	eventstate |= ( HID_EVENT_LEFT );
-  
- 	if(y_move > 32768/2)
-    	eventstate |= ( HID_EVENT_DOWN );
-    			
-    if(y_move < -32768/2)
-    	eventstate |= ( HID_EVENT_UP );
-    	
-    if(SDL_JoystickGetButton(joystick, 1) == SDL_PRESSED)
-    	eventstate |= ( HID_EVENT_A );
-    
-    if(SDL_JoystickGetButton(joystick, 2) == SDL_PRESSED)
-    	eventstate |= ( HID_EVENT_B );
-    	
-    if(SDL_JoystickGetButton(joystick, 3) == SDL_PRESSED)
-    	eventstate |= ( HID_EVENT_L );
-    	
-    if(SDL_JoystickGetButton(joystick, 4) == SDL_PRESSED)
-    	eventstate |= ( HID_EVENT_R );
-    }
-*/
-
-	return mask;
-
 }
 
-int  handy_sdl_on_key_up(SDL_KeyboardEvent key, int mask)
+static void handy_sdl_pad_open(int index)
 {
-	
-//  Uint8 *keystate = SDL_GetKeyState(NULL); // First to initialize the keystates
-//	int mod = SDL_GetModState();
+	if(pad != NULL) return;
+	if(!SDL_IsGameController(index)) return;
 
-/*    
-    if(joy) {
-    	x_move = SDL_JoystickGetAxis(joystick, 0);
-		y_move = SDL_JoystickGetAxis(joystick, 1);
-    }
-*/  
+	pad = SDL_GameControllerOpen(index);
+	if(pad == NULL) return;
 
-    switch(key.keysym.sym)
+	SDL_Joystick *js = SDL_GameControllerGetJoystick(pad);
+	pad_id = SDL_JoystickInstanceID(js);
+	printf("Controller connected: %s\n", SDL_GameControllerName(pad));
+}
+
+static void handy_sdl_pad_close(void)
+{
+	if(pad == NULL) return;
+	printf("Controller disconnected\n");
+	SDL_GameControllerClose(pad);
+	pad = NULL;
+	pad_id = -1;
+}
+
+void handy_sdl_input_init(void)
+{
+	handy_sdl_input_defaults();
+
+	// GameController rather than raw Joystick: SDL ships a mapping database,
+	// so ordinary pads work without any per-device configuration.
+	if(SDL_InitSubSystem(SDL_INIT_GAMECONTROLLER) < 0)
 	{
-    case SDLK_LEFT: {  // Lynx LEFT
-		mask&= ~BUTTON_LEFT;
-		break;
-    }
-    case SDLK_RIGHT: { // Lynx RIGHT
-		mask&= ~BUTTON_RIGHT;
-		break;
-    }
-	
-    case SDLK_UP: { // Lynx UP
-		mask&= ~BUTTON_UP;
-		break;
-    }
-	
-    case SDLK_DOWN: { // Lynx DOWN
-		mask&= ~BUTTON_DOWN;
-		break;
-    }
-	
-    case SDLK_RETURN: { // Lynx PAUSE
-		mask&= ~BUTTON_PAUSE;
-		break;
-    }
-	
-    case SDLK_x: { // Lynx B
-        mask&= ~BUTTON_B;
-		break;
-    }
-	
-    case SDLK_z: { // Lynx A
-       mask&= ~BUTTON_A; 
-       break;
-    }
-	
-	case SDLK_F1: {// Lynx Option1
-		mask&= ~BUTTON_OPT1;
-		break;
+		printf("Controller support unavailable: %s\n", SDL_GetError());
+		return;
 	}
 
-	case SDLK_F2: {// Lynx Option2
-		mask&= ~BUTTON_OPT2;
-		break;
-	}
+	for(int i = 0; i < SDL_NumJoysticks(); i++) handy_sdl_pad_open(i);
+}
 
-   
+void handy_sdl_input_close(void)
+{
+	handy_sdl_pad_close();
+}
 
-    case SDLK_ESCAPE: {// ON/OFF key (well, definately more off :-)
-       handy_sdl_quit();				
-    }
-	
-	default: {
-	   break;
+int handy_sdl_input_event(SDL_Event *event)
+{
+	switch(event->type)
+	{
+		case SDL_CONTROLLERDEVICEADDED:
+			handy_sdl_pad_open(event->cdevice.which);
+			return 1;
+		case SDL_CONTROLLERDEVICEREMOVED:
+			if(event->cdevice.which == pad_id) handy_sdl_pad_close();
+			return 1;
+		default:
+			return 0;
 	}
-	
-	}
-/*    
-    if(joy) {
-    if(x_move > 32768/2)
+}
 
-    	eventstate |= ( HID_EVENT_RIGHT ); // seems to work fine
-    			
-    if(x_move < -32768/2)
-    	eventstate |= ( HID_EVENT_LEFT );
-  
- 	if(y_move > 32768/2)
-    	eventstate |= ( HID_EVENT_DOWN );
-    			
-    if(y_move < -32768/2)
-    	eventstate |= ( HID_EVENT_UP );
-    	
-    if(SDL_JoystickGetButton(joystick, 1) == SDL_PRESSED)
-    	eventstate |= ( HID_EVENT_A );
-    
-    if(SDL_JoystickGetButton(joystick, 2) == SDL_PRESSED)
-    	eventstate |= ( HID_EVENT_B );
-    	
-    if(SDL_JoystickGetButton(joystick, 3) == SDL_PRESSED)
-    	eventstate |= ( HID_EVENT_L );
-    	
-    if(SDL_JoystickGetButton(joystick, 4) == SDL_PRESSED)
-    	eventstate |= ( HID_EVENT_R );
-    }
+/*
+	Name                :   handy_sdl_input_poll
+	Function            :   Rebuild the Lynx button mask and hand it over.
+
+	Information         :   Polls current state rather than accumulating key
+	                        events. The old code built the mask from KEYDOWN and
+	                        KEYUP and could be left holding a button forever if
+	                        an event went astray - losing window focus mid-press
+	                        was enough to do it.
 */
+void handy_sdl_input_poll(int allow_keyboard)
+{
+	const Uint8 *keys = SDL_GetKeyboardState(NULL);
+	ULONG mask = 0;
 
-	return mask;
+	for(int i = 0; i < HANDY_BTN_COUNT; i++)
+	{
+		int down = 0;
+
+		if(allow_keyboard && bindings[i].key != SDL_SCANCODE_UNKNOWN &&
+		   keys[bindings[i].key])
+			down = 1;
+
+		if(pad != NULL && bindings[i].pad >= 0 &&
+		   SDL_GameControllerGetButton(pad, (SDL_GameControllerButton)bindings[i].pad))
+			down = 1;
+
+		if(down) mask |= bindings[i].mask;
+	}
+
+	// Left stick doubles as the d-pad.
+	if(pad != NULL)
+	{
+		int x = SDL_GameControllerGetAxis(pad, SDL_CONTROLLER_AXIS_LEFTX);
+		int y = SDL_GameControllerGetAxis(pad, SDL_CONTROLLER_AXIS_LEFTY);
+
+		if(x < -PAD_AXIS_DEADZONE) mask |= BUTTON_LEFT;
+		if(x >  PAD_AXIS_DEADZONE) mask |= BUTTON_RIGHT;
+		if(y < -PAD_AXIS_DEADZONE) mask |= BUTTON_UP;
+		if(y >  PAD_AXIS_DEADZONE) mask |= BUTTON_DOWN;
+	}
+
+	mpLynx->SetButtonData(mask);
+}
+
+const char *handy_sdl_input_name(int button)
+{
+	if(button < 0 || button >= HANDY_BTN_COUNT) return "";
+	return bindings[button].name;
+}
+
+SDL_Scancode handy_sdl_input_get_key(int button)
+{
+	if(button < 0 || button >= HANDY_BTN_COUNT) return SDL_SCANCODE_UNKNOWN;
+	return bindings[button].key;
+}
+
+void handy_sdl_input_set_key(int button, SDL_Scancode code)
+{
+	if(button < 0 || button >= HANDY_BTN_COUNT) return;
+
+	// A key can only drive one Lynx button, so clear it from any other.
+	for(int i = 0; i < HANDY_BTN_COUNT; i++)
+		if(i != button && bindings[i].key == code) bindings[i].key = SDL_SCANCODE_UNKNOWN;
+
+	bindings[button].key = code;
+}
+
+int handy_sdl_input_get_pad(int button)
+{
+	if(button < 0 || button >= HANDY_BTN_COUNT) return -1;
+	return bindings[button].pad;
+}
+
+void handy_sdl_input_set_pad(int button, int pad_button)
+{
+	if(button < 0 || button >= HANDY_BTN_COUNT) return;
+
+	for(int i = 0; i < HANDY_BTN_COUNT; i++)
+		if(i != button && bindings[i].pad == pad_button) bindings[i].pad = -1;
+
+	bindings[button].pad = pad_button;
+}
+
+void handy_sdl_input_swap_ab(void)
+{
+	SDL_Scancode k = bindings[HANDY_BTN_A].key;
+	int          p = bindings[HANDY_BTN_A].pad;
+
+	bindings[HANDY_BTN_A].key = bindings[HANDY_BTN_B].key;
+	bindings[HANDY_BTN_A].pad = bindings[HANDY_BTN_B].pad;
+	bindings[HANDY_BTN_B].key = k;
+	bindings[HANDY_BTN_B].pad = p;
+}
+
+const char *handy_sdl_input_pad_name(void)
+{
+	return pad ? SDL_GameControllerName(pad) : NULL;
 }
