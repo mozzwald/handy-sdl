@@ -43,6 +43,7 @@ SDL_Texture		*lynxTexture  = NULL;
 static int	 frame_pending = 0;
 static int	 fullscreen_on = 0;
 static int	 smoothing_on  = 0;
+static int	 integer_scale = 0;
 static int	 window_scale  = 3;
 
 // Mikey renders 0x00RRGGBB, so the alpha byte is ignored: RGB888 rather than
@@ -116,11 +117,41 @@ int handy_sdl_video_reconfigure(void)
 		return 0;
 	}
 
-	// Everything the emulator draws is addressed in Lynx pixels; SDL scales
-	// and letterboxes to the real window size for us.
-	SDL_RenderSetLogicalSize(mainRenderer, LynxWidth, LynxHeight);
-
 	return 1;
+}
+
+/*
+	Name                :   handy_sdl_fit_rect
+	Function            :   Letterbox the Lynx display into the window.
+
+	Information         :   SDL_RenderSetLogicalSize() would do this for us, but
+	                        it scales *everything* drawn through the renderer,
+	                        which would render the GUI in 160x102 space and make
+	                        it unusable. Fitting the rect by hand keeps the GUI
+	                        in window pixels, and makes an integer-only scale
+	                        straightforward.
+*/
+static void handy_sdl_fit_rect(SDL_Rect *dst)
+{
+	int ow = 0, oh = 0;
+	SDL_GetRendererOutputSize(mainRenderer, &ow, &oh);
+
+	float sx = (float)ow / (float)LynxWidth;
+	float sy = (float)oh / (float)LynxHeight;
+	float s  = (sx < sy) ? sx : sy;
+
+	if(integer_scale)
+	{
+		// Whole pixels only, but never scale away to nothing on a tiny window.
+		int is = (int)s;
+		if(is < 1) is = 1;
+		s = (float)is;
+	}
+
+	dst->w = (int)((float)LynxWidth  * s);
+	dst->h = (int)((float)LynxHeight * s);
+	dst->x = (ow - dst->w) / 2;
+	dst->y = (oh - dst->h) / 2;
 }
 
 /*
@@ -221,9 +252,13 @@ void handy_sdl_present(void (*overlay)(void))
 		frame_pending = 0;
 	}
 
-	SDL_RenderClear(mainRenderer);
-	SDL_RenderCopy(mainRenderer, lynxTexture, NULL, NULL);
+	SDL_Rect dst;
+	handy_sdl_fit_rect(&dst);
 
+	SDL_RenderClear(mainRenderer);
+	SDL_RenderCopy(mainRenderer, lynxTexture, NULL, &dst);
+
+	// Drawn after the game and in window pixels, not Lynx pixels.
 	if(overlay) overlay();
 
 	SDL_RenderPresent(mainRenderer);
@@ -252,6 +287,16 @@ void handy_sdl_set_smoothing(int linear)
 int handy_sdl_get_smoothing(void)
 {
 	return smoothing_on;
+}
+
+void handy_sdl_set_integer_scale(int on)
+{
+	integer_scale = on ? 1 : 0;
+}
+
+int handy_sdl_get_integer_scale(void)
+{
+	return integer_scale;
 }
 
 void handy_sdl_set_window_scale(int scale)

@@ -52,7 +52,7 @@ CPPFLAGS = -MMD -Wall -Wno-switch -Wno-non-virtual-dtor -O4 -D$(SYSTYPE) -DANSI_
 
 LDFLAGS =
 
-LIBS = -L/usr/local/lib -L/usr/lib $(SDLLIBS) -lstdc++ -lz
+LIBS = -L/usr/local/lib -L/usr/lib $(SDLLIBS) -lstdc++ -lz -lm
 
 INCS = -I./src -I./src/handy-0.95 -I/usr/local/include -I/usr/include
 
@@ -70,7 +70,14 @@ OBJS = \
 		obj/handy_sdl_handling.o \
 		obj/handy_sdl_graphics.o \
 		obj/handy_sdl_sound.o \
-		obj/handy_sdl_comlynx.o
+		obj/handy_sdl_comlynx.o \
+		obj/handy_sdl_gui.o \
+		obj/imgui.o \
+		obj/imgui_draw.o \
+		obj/imgui_tables.o \
+		obj/imgui_widgets.o \
+		obj/imgui_impl_sdl2.o \
+		obj/imgui_impl_sdlrenderer2.o
 
 
 all: checkenv message obj $(TARGET)$(EXESUFFIX)
@@ -131,6 +138,12 @@ obj/%.o: src/%.c
 obj/%.o: src/%.cpp
 	@echo "*** Compiling $<..."
 	@$(CC) $(CPPFLAGS) $(INCS) -c $< -o $@
+
+# Vendored Dear ImGui. -w because it is third party and its warnings are not
+# ours to fix; -fno-strict-aliasing to match upstream's build recommendations.
+obj/%.o: src/imgui/%.cpp
+	@echo "*** Compiling $<..."
+	@$(CC) $(CPPFLAGS) -w -fno-strict-aliasing $(INCS) -c $< -o $@
 
 obj/%.o: src/zlib-113/%.c
 	@echo "*** Compiling $<..."

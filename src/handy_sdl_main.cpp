@@ -68,6 +68,7 @@
 #include "handy_sdl_handling.h"
 #include "handy_sdl_sound.h"
 #include "handy_sdl_comlynx.h"
+#include "handy_sdl_gui.h"
 #include "handy_sdl_usage.h"
 //#include "sdlemu/sdlemu_opengl.h"
 
@@ -235,6 +236,7 @@ void handy_sdl_quit(void)
     SDL_PauseAudio(1);
 	emulation   = -1;
 
+	handy_sdl_gui_close();
 	handy_sdl_comlynx_close();
 	handy_sdl_video_close();
 
@@ -350,6 +352,12 @@ int main(int argc, char *argv[])
 	handy_sdl_attach_display();
 	printf("[DONE]\n");
 
+	// Bring up the GUI on the window we just created
+	if(!handy_sdl_gui_init())
+	{
+		printf("Warning: could not start the GUI, continuing without it\n");
+	}
+
 	// Initialise Handy/SDL audio
 	printf("Initialising SDL Audio...     ");
 	if(handy_sdl_audio_init())
@@ -371,6 +379,10 @@ int main(int argc, char *argv[])
 		// Getting events for keyboard and/or joypad handling
 		while(SDL_PollEvent(&handy_sdl_event))
 		{
+			// Let the GUI look first. When it takes an event - typing into a
+			// text field, say - it must not also reach the Lynx.
+			if(handy_sdl_gui_event(&handy_sdl_event)) continue;
+
 			switch(handy_sdl_event.type)
 			{
 				case SDL_KEYUP:
@@ -422,7 +434,8 @@ int main(int argc, char *argv[])
 		// Draw the frame the emulation just finished. This used to happen
 		// inside Mikey's display callback; doing it here keeps the emulation
 		// core out of the business of compositing the screen.
-		handy_sdl_present(NULL);
+		handy_sdl_gui_frame();
+		handy_sdl_present(handy_sdl_gui_draw);
 
 		handy_sdl_this_time = SDL_GetTicks();
 

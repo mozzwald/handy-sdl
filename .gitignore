@@ -14,3 +14,6 @@ lynxboot.img
 *.bin
 *.zip
 *.gz
+
+# Local test captures
+*.bmp
