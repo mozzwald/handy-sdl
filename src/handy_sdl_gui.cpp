@@ -39,7 +39,7 @@ static bool	show_comlynx	= false;
 // time it is shown so that typing does not fight with the running link.
 static int	cl_mode		= HANDY_COMLYNX_LISTEN;
 static char	cl_host[256]	= "127.0.0.1";
-static int	cl_port		= 9000;
+static int	cl_port		= 8100;
 static bool	cl_loaded	= false;
 
 // While non-negative, the next key or pad button pressed is bound to this

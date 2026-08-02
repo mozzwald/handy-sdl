@@ -54,7 +54,7 @@ static int		mode = MODE_OFF;
 // asked for, never opened just because the emulator started.
 static int		cfg_mode = MODE_OFF;
 static char		peerhost[256] = "127.0.0.1";
-static int		peerport = 9000;
+static int		peerport = 8100;
 
 // Throughput accounting, sampled once a second for the status display.
 static int		rx_bytes = 0, tx_bytes = 0;
