@@ -175,6 +175,35 @@ void handy_sdl_gui_open_browser(void)
 	browse_stale = true;
 }
 
+const char *handy_sdl_gui_get_browse_dir(void)
+{
+	return browse_dir.c_str();
+}
+
+void handy_sdl_gui_set_browse_dir(const char *path)
+{
+	if(path == NULL || *path == '\0') return;
+	browse_dir   = path;
+	browse_stale = true;
+}
+
+void handy_sdl_gui_add_recent(const char *path)
+{
+	if(path == NULL || *path == '\0') return;
+	handy_sdl_gui_remember(path);
+}
+
+int handy_sdl_gui_recent_count(void)
+{
+	return (int)recent_roms.size();
+}
+
+const char *handy_sdl_gui_recent_get(int index)
+{
+	if(index < 0 || index >= (int)recent_roms.size()) return "";
+	return recent_roms[index].c_str();
+}
+
 void handy_sdl_gui_set_rom_dir(const char *path)
 {
 	if(path == NULL || *path == '\0') return;

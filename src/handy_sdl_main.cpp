@@ -69,6 +69,7 @@
 #include "handy_sdl_sound.h"
 #include "handy_sdl_comlynx.h"
 #include "handy_sdl_gui.h"
+#include "handy_sdl_config.h"
 #include "handy_sdl_usage.h"
 //#include "sdlemu/sdlemu_opengl.h"
 
@@ -85,6 +86,10 @@ int 		 	LynxFormat;				// Lynx ROM format type
 int 		 	LynxRotate;				// Lynx ROM rotation type
 
 int		 		emulation = 0;
+
+// Promoted out of main() so the settings file can read them back.
+int				Throttle = 1;		// throttle to 60FPS
+int				framecounter = 0;	// FPS counter in the title bar
 
 /*
 	Name	            : 	handy_sdl_update
@@ -282,6 +287,9 @@ void handy_sdl_quit(void)
     SDL_PauseAudio(1);
 	emulation   = -1;
 
+	// Capture the current state before anything is torn down.
+	handy_sdl_config_save();
+
 	handy_sdl_input_close();
 	handy_sdl_gui_close();
 	handy_sdl_comlynx_close();
@@ -304,20 +312,27 @@ int main(int argc, char *argv[])
 	Uint32  	handy_sdl_start_time;
 	Uint32  	handy_sdl_this_time;
 	float   	fps_counter;
-	int	 	    Throttle  = 1;  // Throttle to 60FPS
-	int		 	framecounter = 0; // FPS Counter
 	int		 	Autoskip = 0; // Autoskip
 	int		 	Skipped = 0;
 	int		 	Fullscreen = 0;
 	int			Smoothing  = 0;  // linear filtering when scaling up
+	int			IntegerScale = 0;
+	int			SoundWanted;
 
 	gAudioEnabled = TRUE;
+	SoundWanted   = 1;
 
 	// Default output
 	printf("Handy GCC/SDL Portable Atari Lynx Emulator %s\n", HANDY_SDL_VERSION);
 	printf("Based upon %s by Keith Wilkins\n", HANDY_VERSION);
 	printf("Written by SDLEmu Team, additions by Pierre Doucet\n");
 	printf("Contact: http://sdlemu.ngemu.com | shalafi@xs4all.nl\n\n");
+
+	// Settings first, so that anything on the command line overrides them.
+	handy_sdl_config_load();
+	handy_sdl_config_get_video(&LynxScale, &Fullscreen, &Smoothing, &IntegerScale);
+	handy_sdl_config_get_emulation(&Throttle, &SoundWanted, &framecounter);
+	gAudioEnabled = SoundWanted ? TRUE : FALSE;
 
 	// A cartridge is optional now that there is a GUI to load one with. The
 	// core boots happily with none - CCart reports "<No cart loaded>" - which
@@ -393,12 +408,14 @@ int main(int argc, char *argv[])
 	// Query Rom Image information
 	handy_sdl_rom_info();
 
-	// Attach ComLynx to a TCP socket if one was requested
+	// Stored ComLynx settings first, then anything -comlynx asked for.
+	handy_sdl_config_apply_comlynx();
 	handy_sdl_comlynx_init();
 
 	// Initialise Handy/SDL video
 	printf("Initialising Handy Display... ");
 	handy_sdl_set_smoothing(Smoothing);
+	handy_sdl_set_integer_scale(IntegerScale);
 	if( !handy_sdl_video_setup(Fullscreen, LynxScale) )
 	{
 		return 0;
@@ -411,14 +428,19 @@ int main(int argc, char *argv[])
 	{
 		printf("Warning: could not start the GUI, continuing without it\n");
 	}
+	// Restore the browser directory and recent list, then let a cartridge named
+	// on the command line take precedence over the stored directory.
+	handy_sdl_config_apply_gui();
 	handy_sdl_gui_set_rom_dir(romfile);
 
 	// Nothing to play yet, so put the browser up rather than leaving the user
 	// staring at the boot ROM wondering what to do.
 	if(*romfile == '\0') handy_sdl_gui_open_browser();
 
-	// Input bindings and controller support
+	// Input bindings and controller support. Defaults are installed first, then
+	// anything the settings file overrides.
 	handy_sdl_input_init();
+	handy_sdl_config_apply_input();
 
 	// Initialise Handy/SDL audio
 	printf("Initialising SDL Audio...     ");
@@ -540,3 +562,6 @@ int main(int argc, char *argv[])
 
 	return 0;
 }
+
+int handy_sdl_get_throttle(void)     { return Throttle; }
+int handy_sdl_get_framecounter(void) { return framecounter; }

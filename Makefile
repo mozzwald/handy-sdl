@@ -72,6 +72,7 @@ OBJS = \
 		obj/handy_sdl_sound.o \
 		obj/handy_sdl_comlynx.o \
 		obj/handy_sdl_gui.o \
+		obj/handy_sdl_config.o \
 		obj/imgui.o \
 		obj/imgui_draw.o \
 		obj/imgui_tables.o \

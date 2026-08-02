@@ -51,6 +51,14 @@ void handy_sdl_comlynx_stop(void);
 // least 256 bytes. Any pointer may be NULL.
 void handy_sdl_comlynx_get_config(int *mode, char *host, int hostlen, int *port);
 
+// Seed the settings without touching the link, so restored settings show up
+// in the panel while leaving the socket closed.
+void handy_sdl_comlynx_set_config(int mode, const char *host, int port);
+
+// True when -comlynx was given, in which case stored settings must not
+// overwrite it.
+int  handy_sdl_comlynx_cli_requested(void);
+
 // Live state for the GUI. Rates are bytes/sec averaged over the last second.
 // Any pointer may be NULL.
 void handy_sdl_comlynx_status(int *active, int *peers, int *rx_rate, int *tx_rate);

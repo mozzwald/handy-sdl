@@ -23,6 +23,13 @@ void handy_sdl_gui_set_rom_dir(const char *path);
 // Pop the ROM browser open. Used at startup when no cartridge was named.
 void handy_sdl_gui_open_browser(void);
 
+// Browser directory and recent list, for the settings file.
+const char *handy_sdl_gui_get_browse_dir(void);
+void        handy_sdl_gui_set_browse_dir(const char *path);
+void        handy_sdl_gui_add_recent(const char *path);
+int         handy_sdl_gui_recent_count(void);
+const char *handy_sdl_gui_recent_get(int index);
+
 // Feed one SDL event to the GUI. Returns 1 if the GUI consumed it, in which
 // case the emulator should ignore it.
 int  handy_sdl_gui_event(SDL_Event *event);

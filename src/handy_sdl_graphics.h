@@ -82,6 +82,7 @@ int   handy_sdl_get_smoothing(void);
 void  handy_sdl_set_integer_scale(int on);
 int   handy_sdl_get_integer_scale(void);
 void  handy_sdl_set_window_scale(int scale);
+int   handy_sdl_get_window_scale(void);
 
 void  handy_sdl_video_close(void);
 

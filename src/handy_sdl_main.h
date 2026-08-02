@@ -77,6 +77,11 @@ extern int 		 	    LynxFormat;				// Lynx ROM format type
 extern int 		 	    LynxRotate;				// Lynx ROM rotation type
 extern int				LynxScale;				// Initial window size multiplier
 extern int				emulation;              // Emulation enabled
+extern int				Throttle;               // Throttle to 60FPS
+extern int				framecounter;           // FPS counter in the title bar
+
+int  handy_sdl_get_throttle(void);
+int  handy_sdl_get_framecounter(void);
 
 inline	int 	handy_sdl_update(void);
 		void 	handy_sdl_rom_info(void);

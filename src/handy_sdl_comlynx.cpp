@@ -56,6 +56,11 @@ static int		cfg_mode = MODE_OFF;
 static char		peerhost[256] = "127.0.0.1";
 static int		peerport = 8100;
 
+// Set only by -comlynx. The stored settings also fill cfg_mode in, so that
+// alone cannot mean "bring the link up" - otherwise merely having used
+// ComLynx once would reopen the socket on every later run.
+static int		cli_requested = 0;
+
 // Throughput accounting, sampled once a second for the status display.
 static int		rx_bytes = 0, tx_bytes = 0;
 static int		rx_rate  = 0, tx_rate  = 0;
@@ -183,6 +188,7 @@ int handy_sdl_comlynx_parse(const char *spec)
 			return 0;
 		}
 		cfg_mode = MODE_LISTEN;
+		cli_requested = 1;
 		return 1;
 	}
 
@@ -210,6 +216,7 @@ int handy_sdl_comlynx_parse(const char *spec)
 			return 0;
 		}
 		cfg_mode = MODE_CONNECT;
+		cli_requested = 1;
 		return 1;
 	}
 
@@ -395,7 +402,10 @@ void handy_sdl_comlynx_stop(void)
 
 int handy_sdl_comlynx_init(void)
 {
-	if(cfg_mode==MODE_OFF) return 0;
+	// Only -comlynx brings the link up here. Settings restored from file are
+	// applied by handy_sdl_config_apply_comlynx(), which honours its own
+	// autostart flag.
+	if(!cli_requested || cfg_mode==MODE_OFF) return 0;
 	return handy_sdl_comlynx_start(cfg_mode, peerhost, peerport);
 }
 
@@ -407,6 +417,22 @@ void handy_sdl_comlynx_get_config(int *m, char *host, int hostlen, int *port)
 	{
 		strncpy(host, peerhost, (size_t)hostlen-1);
 		host[hostlen-1] = '\0';
+	}
+}
+
+int handy_sdl_comlynx_cli_requested(void)
+{
+	return cli_requested;
+}
+
+void handy_sdl_comlynx_set_config(int m, const char *host, int port)
+{
+	cfg_mode = m;
+	if(port>0 && port<=65535) peerport = port;
+	if(host && *host)
+	{
+		strncpy(peerhost, host, sizeof(peerhost)-1);
+		peerhost[sizeof(peerhost)-1] = '\0';
 	}
 }
 

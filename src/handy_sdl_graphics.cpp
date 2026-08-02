@@ -307,6 +307,25 @@ void handy_sdl_set_window_scale(int scale)
 	SDL_SetWindowSize(mainWindow, LynxWidth * scale, LynxHeight * scale);
 }
 
+/*
+	Report the window size as a multiple of the Lynx resolution. The window is
+	freely resizable, so this rounds whatever the user dragged it to, and is
+	what gets stored between runs.
+*/
+int handy_sdl_get_window_scale(void)
+{
+	if(mainWindow == NULL || fullscreen_on) return window_scale;
+
+	int w = 0, h = 0;
+	SDL_GetWindowSize(mainWindow, &w, &h);
+	if(LynxWidth <= 0 || LynxHeight <= 0) return window_scale;
+
+	int sx = w / LynxWidth;
+	int sy = h / LynxHeight;
+	int s  = (sx < sy) ? sx : sy;
+	return (s < 1) ? 1 : s;
+}
+
 void handy_sdl_video_close(void)
 {
 	if(lynxTexture)  { SDL_DestroyTexture(lynxTexture);   lynxTexture  = NULL; }

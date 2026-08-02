@@ -117,6 +117,23 @@ unplugged while running. The left stick acts as a d-pad in addition to
 whatever the d-pad itself is bound to.
 
 
+------------
+- Settings -
+------------
+
+Settings are kept in ~/.config/handy-sdl/config (or under XDG_CONFIG_HOME if
+that is set) and written when the emulator exits normally. It is plain
+key=value text and safe to edit by hand.
+
+Stored are the window size, fullscreen, scaling options, throttle, sound and
+FPS counter, the ROM browser directory and recent list, the ComLynx settings,
+and the input bindings.
+
+Command line options always override the stored values. The ComLynx link only
+comes back automatically if it was running when the emulator last exited;
+otherwise the settings are simply restored into the panel without opening a
+socket.
+
 -------------------
 - A note on sound -
 -------------------
