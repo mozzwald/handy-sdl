@@ -25,6 +25,7 @@
 #include "handy_sdl_main.h"
 #include "handy_sdl_graphics.h"
 #include "handy_sdl_handling.h"
+#include "handy_sdl_comlynx.h"
 #include "handy_sdl_gui.h"
 
 static int	gui_ready	= 0;
@@ -32,6 +33,14 @@ static bool	show_about	= false;
 static bool	show_keys	= false;
 static bool	show_browser	= false;
 static bool	show_input	= false;
+static bool	show_comlynx	= false;
+
+// Edit buffers for the ComLynx panel, seeded from the live settings the first
+// time it is shown so that typing does not fight with the running link.
+static int	cl_mode		= HANDY_COMLYNX_LISTEN;
+static char	cl_host[256]	= "127.0.0.1";
+static int	cl_port		= 9000;
+static bool	cl_loaded	= false;
 
 // While non-negative, the next key or pad button pressed is bound to this
 // Lynx button instead of being acted on normally.
@@ -311,6 +320,18 @@ static void handy_sdl_gui_menubar(void)
 		ImGui::EndMenu();
 	}
 
+	if(ImGui::BeginMenu("ComLynx"))
+	{
+		int active = 0, peers = 0;
+		handy_sdl_comlynx_status(&active, &peers, NULL, NULL);
+
+		if(ImGui::MenuItem("Settings...")) show_comlynx = true;
+		ImGui::Separator();
+		if(active) ImGui::TextDisabled("Connected, %d peer%s", peers, peers==1?"":"s");
+		else       ImGui::TextDisabled("Not connected");
+		ImGui::EndMenu();
+	}
+
 	if(ImGui::BeginMenu("Help"))
 	{
 		if(ImGui::MenuItem("Keyboard controls")) show_keys  = true;
@@ -493,10 +514,83 @@ static void handy_sdl_gui_input_window(void)
 	ImGui::End();
 }
 
+static void handy_sdl_gui_comlynx_window(void)
+{
+	if(!show_comlynx) return;
+
+	if(!cl_loaded)
+	{
+		handy_sdl_comlynx_get_config(&cl_mode, cl_host, sizeof(cl_host), &cl_port);
+		if(cl_mode == HANDY_COMLYNX_OFF) cl_mode = HANDY_COMLYNX_LISTEN;
+		cl_loaded = true;
+	}
+
+	ImVec2 avail = ImGui::GetMainViewport()->WorkSize;
+	ImVec2 want(420.0f, 260.0f);
+	if(want.x > avail.x) want.x = avail.x;
+	if(want.y > avail.y) want.y = avail.y;
+
+	ImGui::SetNextWindowSize(want, ImGuiCond_Always);
+	ImGui::SetNextWindowPos(ImGui::GetMainViewport()->WorkPos, ImGuiCond_Always);
+
+	if(ImGui::Begin("ComLynx", &show_comlynx, ImGuiWindowFlags_NoCollapse))
+	{
+		int active = 0, peers = 0, rx = 0, tx = 0;
+		handy_sdl_comlynx_status(&active, &peers, &rx, &tx);
+
+		ImGui::TextWrapped("Bridges the Lynx serial port to a TCP socket as a raw "
+		                   "byte pipe. Use it to link two emulators or to attach a "
+		                   "bridge such as a FujiNet BoIP channel.");
+		ImGui::Separator();
+
+		ImGui::RadioButton("Listen for peers", &cl_mode, HANDY_COMLYNX_LISTEN);
+		ImGui::SameLine();
+		ImGui::RadioButton("Connect to peer", &cl_mode, HANDY_COMLYNX_CONNECT);
+
+		if(cl_mode == HANDY_COMLYNX_CONNECT)
+		{
+			ImGui::SetNextItemWidth(200);
+			ImGui::InputText("Host", cl_host, sizeof(cl_host));
+		}
+		ImGui::SetNextItemWidth(120);
+		ImGui::InputInt("Port", &cl_port);
+		if(cl_port < 1)     cl_port = 1;
+		if(cl_port > 65535) cl_port = 65535;
+
+		ImGui::Separator();
+
+		if(ImGui::Button(active ? "Reconnect" : "Connect"))
+			handy_sdl_comlynx_start(cl_mode, cl_host, cl_port);
+
+		ImGui::SameLine();
+		if(!active) ImGui::BeginDisabled();
+		if(ImGui::Button("Disconnect")) handy_sdl_comlynx_stop();
+		if(!active) ImGui::EndDisabled();
+
+		ImGui::SameLine();
+		bool tr = handy_sdl_comlynx_get_trace() != 0;
+		if(ImGui::Checkbox("Log bytes", &tr)) handy_sdl_comlynx_trace(tr ? 1 : 0);
+
+		ImGui::Separator();
+		if(active)
+		{
+			ImGui::Text("Status : %d peer%s connected", peers, peers==1?"":"s");
+			ImGui::Text("Traffic: %d B/s in, %d B/s out", rx, tx);
+			ImGui::TextDisabled("The Lynx link runs at about 5700 B/s.");
+		}
+		else
+		{
+			ImGui::Text("Status : not connected");
+		}
+	}
+	ImGui::End();
+}
+
 static void handy_sdl_gui_windows(void)
 {
 	handy_sdl_gui_browser();
 	handy_sdl_gui_input_window();
+	handy_sdl_gui_comlynx_window();
 
 	if(show_keys)
 	{
@@ -549,7 +643,7 @@ void handy_sdl_gui_frame(void)
 	else if(!ImGui::IsAnyItemActive() && !ImGui::IsPopupOpen("", ImGuiPopupFlags_AnyPopupId))
 		menu_active = 0;
 
-	if(menu_active || show_keys || show_about || show_browser || show_input)
+	if(menu_active || show_keys || show_about || show_browser || show_input || show_comlynx)
 	{
 		SDL_ShowCursor(SDL_ENABLE);
 		handy_sdl_gui_menubar();

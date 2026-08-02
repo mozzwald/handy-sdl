@@ -38,6 +38,9 @@ printf("                              to link two emulators, to reach a real Lyn
 printf("                              over a bridge, or to attach any external\n");
 printf("                              ComLynx device.\n");
 printf(" -comlynxtrace              : Log every byte crossing the link\n");
+printf("                              Both are startup defaults only; the link\n");
+printf("                              can be set up, stopped and restarted at\n");
+printf("                              any time from the ComLynx menu.\n");
 printf("\n");
 printf(" Keyboard controls:\n");
 printf("\n");

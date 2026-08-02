@@ -28,21 +28,41 @@
 // go to the cart and to all the other peers.
 //
 
-// Parse a mode string as described above. Returns 1 on success, 0 on a
-// malformed spec (a message is printed).
+enum {
+	HANDY_COMLYNX_OFF = 0,
+	HANDY_COMLYNX_LISTEN,
+	HANDY_COMLYNX_CONNECT
+};
+
+// Parse a mode string as described above, storing it as the startup setting.
+// Returns 1 on success, 0 on a malformed spec (a message is printed).
 int  handy_sdl_comlynx_parse(const char *spec);
+
+// Bring up whatever handy_sdl_comlynx_parse() stored, if anything. Safe to
+// call when no spec was given, in which case it does nothing.
+int  handy_sdl_comlynx_init(void);
+
+// Start or stop the link at any time. start() replaces any existing link, so
+// it doubles as "apply these settings". Returns 1 if the link came up.
+int  handy_sdl_comlynx_start(int mode, const char *host, int port);
+void handy_sdl_comlynx_stop(void);
+
+// Current settings, whether or not the link is up. host must have room for at
+// least 256 bytes. Any pointer may be NULL.
+void handy_sdl_comlynx_get_config(int *mode, char *host, int hostlen, int *port);
+
+// Live state for the GUI. Rates are bytes/sec averaged over the last second.
+// Any pointer may be NULL.
+void handy_sdl_comlynx_status(int *active, int *peers, int *rx_rate, int *tx_rate);
 
 // Log every byte crossing the link in both directions. Useful when bringing
 // up whatever sits on the other end.
 void handy_sdl_comlynx_trace(int on);
+int  handy_sdl_comlynx_get_trace(void);
 
 // Re-arm the Tx callback and cable flag after the emulation object has been
 // replaced, as happens when a new cartridge is loaded.
 void handy_sdl_comlynx_reattach(void);
-
-// Bring up the socket and attach to the emulated UART. Safe to call when no
-// spec was given, in which case it does nothing. Returns 1 if enabled.
-int  handy_sdl_comlynx_init(void);
 
 // Pump the socket. Must be called from the emulation loop often enough to
 // keep up with the UART: the Rx queue only holds 32 bytes and overruns are

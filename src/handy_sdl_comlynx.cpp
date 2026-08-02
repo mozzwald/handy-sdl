@@ -42,11 +42,28 @@
 #define COMLYNX_MAX_PEERS	4
 #define COMLYNX_TXBUF		4096
 
-enum { MODE_OFF=0, MODE_LISTEN, MODE_CONNECT };
+#define MODE_OFF		HANDY_COMLYNX_OFF
+#define MODE_LISTEN		HANDY_COMLYNX_LISTEN
+#define MODE_CONNECT	HANDY_COMLYNX_CONNECT
 
+// What the link is doing right now.
 static int		mode = MODE_OFF;
-static char		peerhost[256];
-static int		peerport = 0;
+
+// What the GUI and the command line asked for. Kept separately so the fields
+// stay filled in while the link is stopped. Defaults to OFF: the link must be
+// asked for, never opened just because the emulator started.
+static int		cfg_mode = MODE_OFF;
+static char		peerhost[256] = "127.0.0.1";
+static int		peerport = 9000;
+
+// Throughput accounting, sampled once a second for the status display.
+static int		rx_bytes = 0, tx_bytes = 0;
+static int		rx_rate  = 0, tx_rate  = 0;
+static Uint32	rate_mark = 0;
+
+#ifdef __GCCWIN32__
+static int		winsock_up = 0;
+#endif
 
 static SOCKET	listen_sock = INVALID_SOCKET;
 static SOCKET	peers[COMLYNX_MAX_PEERS];
@@ -131,6 +148,7 @@ static void comlynx_tx_callback(int data, UOBJREF objref)
 	if(data & ~0xff) return;
 
 	if(trace) printf("ComLynx: cart -> net %02x\n", data & 0xff);
+	tx_bytes++;
 	comlynx_queue((unsigned char)data, -1);
 }
 
@@ -164,7 +182,7 @@ int handy_sdl_comlynx_parse(const char *spec)
 			printf("ComLynx: bad port in \"%s\"\n", spec);
 			return 0;
 		}
-		mode = MODE_LISTEN;
+		cfg_mode = MODE_LISTEN;
 		return 1;
 	}
 
@@ -191,7 +209,7 @@ int handy_sdl_comlynx_parse(const char *spec)
 			printf("ComLynx: bad port in \"%s\"\n", spec);
 			return 0;
 		}
-		mode = MODE_CONNECT;
+		cfg_mode = MODE_CONNECT;
 		return 1;
 	}
 
@@ -278,9 +296,31 @@ static int comlynx_start_connect(void)
 	return 1;
 }
 
-int handy_sdl_comlynx_init(void)
+/*
+	Bring the link up with the given settings, replacing any existing one. The
+	GUI uses this as its "Apply", so it has to be safe to call repeatedly.
+*/
+int handy_sdl_comlynx_start(int newmode, const char *host, int port)
 {
-	if(mode==MODE_OFF) return 0;
+	// Tear down whatever is running first; a half-open previous link would
+	// otherwise leak its sockets.
+	handy_sdl_comlynx_stop();
+
+	if(newmode==MODE_OFF) return 0;
+
+	if(port<=0 || port>65535)
+	{
+		printf("ComLynx: bad port %d\n", port);
+		return 0;
+	}
+
+	cfg_mode = newmode;
+	peerport = port;
+	if(host && *host)
+	{
+		strncpy(peerhost, host, sizeof(peerhost)-1);
+		peerhost[sizeof(peerhost)-1] = '\0';
+	}
 
 	for(int i=0;i<COMLYNX_MAX_PEERS;i++)
 	{
@@ -288,16 +328,23 @@ int handy_sdl_comlynx_init(void)
 		txlen[i] = 0;
 	}
 	peer_count = 0;
+	rx_bytes = tx_bytes = rx_rate = tx_rate = 0;
+	rate_mark = SDL_GetTicks();
 
 #ifdef __GCCWIN32__
-	WSADATA wsa;
-	if(WSAStartup(MAKEWORD(2,2), &wsa)!=0)
+	if(!winsock_up)
 	{
-		printf("ComLynx: could not initialise winsock\n");
-		mode = MODE_OFF;
-		return 0;
+		WSADATA wsa;
+		if(WSAStartup(MAKEWORD(2,2), &wsa)!=0)
+		{
+			printf("ComLynx: could not initialise winsock\n");
+			return 0;
+		}
+		winsock_up = 1;
 	}
 #endif
+
+	mode = newmode;
 
 	int ok = (mode==MODE_LISTEN) ? comlynx_start_listen() : comlynx_start_connect();
 	if(!ok)
@@ -306,21 +353,92 @@ int handy_sdl_comlynx_init(void)
 		return 0;
 	}
 
-	mpLynx->ComLynxTxCallback(comlynx_tx_callback, (UOBJREF)0);
+	if(mpLynx)
+	{
+		mpLynx->ComLynxTxCallback(comlynx_tx_callback, (UOBJREF)0);
 
-	// Report a cable for as long as the transport is up. Carts test the NOEXP
-	// bit to decide whether a link exists at all, and an external bridge is
-	// the equivalent of a permanently plugged in cable, so this does not
-	// track whether a peer happens to be connected right now.
-	mpLynx->ComLynxCable(TRUE);
-	cable_asserted = 1;
+		// Report a cable for as long as the transport is up. Carts test the
+		// NOEXP bit to decide whether a link exists at all, and an external
+		// bridge is the equivalent of a permanently plugged in cable, so this
+		// does not track whether a peer happens to be connected right now.
+		mpLynx->ComLynxCable(TRUE);
+		cable_asserted = 1;
+	}
 
 	return 1;
+}
+
+void handy_sdl_comlynx_stop(void)
+{
+	if(mode==MODE_OFF) return;
+
+	if(cable_asserted && mpLynx!=NULL)
+	{
+		mpLynx->ComLynxTxCallback(NULL, (UOBJREF)0);
+		mpLynx->ComLynxCable(FALSE);
+		cable_asserted = 0;
+	}
+
+	for(int i=0;i<COMLYNX_MAX_PEERS;i++)
+		if(peers[i]!=INVALID_SOCKET) comlynx_drop_peer(i);
+
+	if(listen_sock!=INVALID_SOCKET)
+	{
+		CLOSESOCKET(listen_sock);
+		listen_sock = INVALID_SOCKET;
+	}
+
+	mode = MODE_OFF;
+	rx_rate = tx_rate = 0;
+	printf("ComLynx: stopped\n");
+}
+
+int handy_sdl_comlynx_init(void)
+{
+	if(cfg_mode==MODE_OFF) return 0;
+	return handy_sdl_comlynx_start(cfg_mode, peerhost, peerport);
+}
+
+void handy_sdl_comlynx_get_config(int *m, char *host, int hostlen, int *port)
+{
+	if(m)    *m = cfg_mode;
+	if(port) *port = peerport;
+	if(host && hostlen>0)
+	{
+		strncpy(host, peerhost, (size_t)hostlen-1);
+		host[hostlen-1] = '\0';
+	}
+}
+
+void handy_sdl_comlynx_status(int *active, int *peers_out, int *rx, int *tx)
+{
+	if(active)    *active = (mode!=MODE_OFF);
+	if(peers_out) *peers_out = peer_count;
+	if(rx)        *rx = rx_rate;
+	if(tx)        *tx = tx_rate;
+}
+
+int handy_sdl_comlynx_get_trace(void)
+{
+	return trace;
 }
 
 void handy_sdl_comlynx_poll(void)
 {
 	if(mode==MODE_OFF) return;
+
+	// Roll the byte counters into a per-second rate for the status display.
+	{
+		Uint32 now = SDL_GetTicks();
+		Uint32 elapsed = now - rate_mark;
+		if(elapsed >= 1000)
+		{
+			rx_rate = (int)((float)rx_bytes * 1000.0f / (float)elapsed);
+			tx_rate = (int)((float)tx_bytes * 1000.0f / (float)elapsed);
+			rx_bytes = tx_bytes = 0;
+			rate_mark = now;
+		}
+	}
 
 	// Accept any newly arrived peers.
 	if(listen_sock!=INVALID_SOCKET)
@@ -369,6 +487,7 @@ void handy_sdl_comlynx_poll(void)
 			for(int b=0;b<got;b++)
 			{
 				if(trace) printf("ComLynx: net -> cart %02x\n", buf[b]);
+				rx_bytes++;
 				mpLynx->ComLynxRxData(buf[b]);
 				// Keep the rest of the bus in sync: everyone hears everyone.
 				comlynx_queue(buf[b], i);
@@ -387,27 +506,9 @@ void handy_sdl_comlynx_poll(void)
 
 void handy_sdl_comlynx_close(void)
 {
-	if(mode==MODE_OFF) return;
-
-	if(cable_asserted && mpLynx!=NULL)
-	{
-		mpLynx->ComLynxTxCallback(NULL, (UOBJREF)0);
-		mpLynx->ComLynxCable(FALSE);
-		cable_asserted = 0;
-	}
-
-	for(int i=0;i<COMLYNX_MAX_PEERS;i++)
-		if(peers[i]!=INVALID_SOCKET) comlynx_drop_peer(i);
-
-	if(listen_sock!=INVALID_SOCKET)
-	{
-		CLOSESOCKET(listen_sock);
-		listen_sock = INVALID_SOCKET;
-	}
+	handy_sdl_comlynx_stop();
 
 #ifdef __GCCWIN32__
-	WSACleanup();
+	if(winsock_up) { WSACleanup(); winsock_up = 0; }
 #endif
-
-	mode = MODE_OFF;
 }
