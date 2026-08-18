@@ -414,6 +414,17 @@ int main(int argc, char *argv[])
 	// Query Rom Image information
 	handy_sdl_rom_info();
 
+	// Audio first, ahead of anything that talks to the outside world. The
+	// callback only ever plays what the emulation has produced, so opening the
+	// device early costs nothing, and it keeps sound from being held hostage by
+	// a slow ComLynx peer or a display that takes its time coming up.
+	printf("Initialising SDL Audio...     ");
+	if(handy_sdl_audio_init())
+	{
+		gAudioEnabled = TRUE;
+	}
+	printf("[DONE]\n");
+
 	// Stored ComLynx settings first, then anything -comlynx asked for.
 	handy_sdl_config_apply_comlynx();
 	handy_sdl_comlynx_init();
@@ -447,14 +458,6 @@ int main(int argc, char *argv[])
 	// anything the settings file overrides.
 	handy_sdl_input_init();
 	handy_sdl_config_apply_input();
-
-	// Initialise Handy/SDL audio
-	printf("Initialising SDL Audio...     ");
-	if(handy_sdl_audio_init())
-	{
-		gAudioEnabled = TRUE;
-	}
-	printf("[DONE]\n");
 
 
 	handy_sdl_start_time = SDL_GetTicks();
