@@ -85,6 +85,9 @@ CRom::CRom(const char *romfile)
 
 	if(fread(mRomData,sizeof(char),ROM_SIZE,fp)!=ROM_SIZE)
 	{
+		// Close before throwing; the old code leaked the handle on this path.
+		fclose(fp);
+
 		CLynxException lynxerr;
 
 		lynxerr.Message() << "The Lynx Boot ROM image couldn't be loaded!";

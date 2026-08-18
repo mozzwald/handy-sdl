@@ -317,11 +317,15 @@ CSystem::CSystem(const char* gamefile,const char* romfile)
 				fseek(fp,0,SEEK_END);
 				howardsize=ftell(fp);
 				fseek(fp,0,SEEK_SET);
-				howardmemory=(UBYTE*) new UBYTE[filesize];
+				// Sized by howardsize, not filesize. The buffer holds howard.o,
+				// and allocating it to the cartridge's length overflowed the
+				// heap whenever howard.o was the larger of the two.
+				howardmemory=(UBYTE*) new UBYTE[howardsize];
 
 				if(fread(howardmemory,sizeof(char),howardsize,fp)!=howardsize)
 				{
 					CLynxException lynxerr;
+					fclose(fp);
 					delete[] filememory;
 					delete[] howardmemory;
 					lynxerr.Message() << "Handy Error: Howard.o load error (Header)";
@@ -618,7 +622,13 @@ bool CSystem::ContextLoad(const char *context)
 	{
 		FILE *fp;
 		// Just open an read into memory
-		if((fp=fopen(context,"rb"))==NULL) status=0;
+		if((fp=fopen(context,"rb"))==NULL)
+		{
+			// Setting status and carrying on used to walk straight into
+			// fseek() on a null handle. There is nothing to read, so stop.
+			gError->Warning("ContextLoad(): could not open the snapshot file");
+			return 0;
+		}
 
 		fseek(fp,0,SEEK_END);
 		filesize=ftell(fp);
