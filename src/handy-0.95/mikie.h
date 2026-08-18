@@ -1176,27 +1176,24 @@ class CMikie : public CLynxBase
 			if(gAudioEnabled)
 			{
 				static SLONG sample=0;
-				ULONG mix=0;
-				
+
 				//
 				// Catch audio buffer up to current time
 				//
-				
-				// Mix the sample
-				sample=0;
-				if(mSTEREO&0x11) { sample+=mAUDIO_0_OUTPUT; mix++; }
-				if(mSTEREO&0x22) { sample+=mAUDIO_1_OUTPUT; mix++; }
-				if(mSTEREO&0x44) { sample+=mAUDIO_2_OUTPUT; mix++; }
-				if(mSTEREO&0x88) { sample+=mAUDIO_3_OUTPUT; mix++; }
-				if(mix)
-				{
-					sample+=128*mix; // Correct for sign
-					sample/=mix;	// Keep the audio volume at max
-				}
-				else
-				{
-					sample=128;
-				}
+
+				// Mix the sample. Mikey sums the four channel outputs into the
+				// DAC, so full scale is four channels at full volume and a lone
+				// channel is a quarter of that however many others are enabled.
+				// Scaling by the enabled count instead would make one channel
+				// grow louder as a game switched the others off, so the divisor
+				// is fixed at four.
+				sample =0;
+				if(mSTEREO&0x11) sample+=mAUDIO_0_OUTPUT;
+				if(mSTEREO&0x22) sample+=mAUDIO_1_OUTPUT;
+				if(mSTEREO&0x44) sample+=mAUDIO_2_OUTPUT;
+				if(mSTEREO&0x88) sample+=mAUDIO_3_OUTPUT;
+				sample/=4;
+				sample+=128;	// Correct for sign
 
 //				sample+=(mSTEREO&0x11)?mAUDIO_0_OUTPUT:0;
 //				sample+=(mSTEREO&0x22)?mAUDIO_1_OUTPUT:0;
