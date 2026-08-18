@@ -1665,6 +1665,13 @@ void CMikie::Poke(ULONG addr,UBYTE data)
 				mAUDIO_0_LAST_COUNT=gSystemCycleCount;
 				gNextTimerEvent=gSystemCycleCount;
 			}
+			// Silencing a channel has to silence it. The counter stops
+			// while the volume is zero, so without this the output stays
+			// parked at whatever level it last toggled to - a DC step that
+			// every effect ends on, and the reason a game that raises and
+			// drops the volume per frame sounded like clicks. Integrate mode
+			// genuinely does hold its level, so leave that alone.
+			if(!data && !mAUDIO_0_INTEGRATE_ENABLE) mAUDIO_0_OUTPUT=0;
 			mAUDIO_0_VOLUME=(SBYTE)data;
 			TRACE_MIKIE2("Poke(AUD0VOL,%02x) at PC=%04x",data,mSystem.mCpu->GetPC());
 			break;
@@ -1730,6 +1737,13 @@ void CMikie::Poke(ULONG addr,UBYTE data)
 				mAUDIO_1_LAST_COUNT=gSystemCycleCount;
 				gNextTimerEvent=gSystemCycleCount;
 			}
+			// Silencing a channel has to silence it. The counter stops
+			// while the volume is zero, so without this the output stays
+			// parked at whatever level it last toggled to - a DC step that
+			// every effect ends on, and the reason a game that raises and
+			// drops the volume per frame sounded like clicks. Integrate mode
+			// genuinely does hold its level, so leave that alone.
+			if(!data && !mAUDIO_1_INTEGRATE_ENABLE) mAUDIO_1_OUTPUT=0;
 			mAUDIO_1_VOLUME=(SBYTE)data;
 			TRACE_MIKIE2("Poke(AUD1VOL,%02x) at PC=%04x",data,mSystem.mCpu->GetPC());
 			break;
@@ -1795,6 +1809,13 @@ void CMikie::Poke(ULONG addr,UBYTE data)
 				mAUDIO_2_LAST_COUNT=gSystemCycleCount;
 				gNextTimerEvent=gSystemCycleCount;
 			}
+			// Silencing a channel has to silence it. The counter stops
+			// while the volume is zero, so without this the output stays
+			// parked at whatever level it last toggled to - a DC step that
+			// every effect ends on, and the reason a game that raises and
+			// drops the volume per frame sounded like clicks. Integrate mode
+			// genuinely does hold its level, so leave that alone.
+			if(!data && !mAUDIO_2_INTEGRATE_ENABLE) mAUDIO_2_OUTPUT=0;
 			mAUDIO_2_VOLUME=(SBYTE)data;
 			TRACE_MIKIE2("Poke(AUD2VOL,%02x) at PC=%04x",data,mSystem.mCpu->GetPC());
 			break;
@@ -1860,6 +1881,13 @@ void CMikie::Poke(ULONG addr,UBYTE data)
 				mAUDIO_3_LAST_COUNT=gSystemCycleCount;
 				gNextTimerEvent=gSystemCycleCount;
 			}
+			// Silencing a channel has to silence it. The counter stops
+			// while the volume is zero, so without this the output stays
+			// parked at whatever level it last toggled to - a DC step that
+			// every effect ends on, and the reason a game that raises and
+			// drops the volume per frame sounded like clicks. Integrate mode
+			// genuinely does hold its level, so leave that alone.
+			if(!data && !mAUDIO_3_INTEGRATE_ENABLE) mAUDIO_3_OUTPUT=0;
 			mAUDIO_3_VOLUME=(SBYTE)data;
 			TRACE_MIKIE2("Poke(AUD3VOL,%02x) at PC=%04x",data,mSystem.mCpu->GetPC());
 			break;
