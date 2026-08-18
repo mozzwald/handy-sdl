@@ -119,7 +119,17 @@
 	ULONG	gAudioBufferPointer=0;
 	ULONG	gAudioLastUpdateCycle=0;
 
-	CErrorInterface *gError=NULL;
+	// gError is dereferenced unconditionally from a dozen places in the core
+	// (illegal opcodes, unhandled Mikey/Suzy registers, power-down, snapshot
+	// load failures) and no frontend ever assigned it, so every one of those
+	// paths was a null dereference waiting for a cartridge to find it. Point it
+	// at a default instance instead: CErrorInterface's own Warning()/Fatal()
+	// are safe no-ops returning 0, which is exactly the "carry on" answer the
+	// call sites expect. A frontend can still install a reporting handler by
+	// assigning gError, and now does so as an improvement rather than as the
+	// difference between running and crashing.
+	static CErrorInterface gDefaultError;
+	CErrorInterface *gError=&gDefaultError;
 #else
 
 	extern ULONG	gSystemCycleCount;
