@@ -17,17 +17,20 @@
 	#include <ws2tcpip.h>
 	#define CLOSESOCKET(s)	closesocket(s)
 	#define SOCKWOULDBLOCK	(WSAGetLastError()==WSAEWOULDBLOCK)
+	#define SOCKINPROGRESS	(WSAGetLastError()==WSAEWOULDBLOCK)
 	typedef int socklen_t;
 #else
 	#include <unistd.h>
 	#include <fcntl.h>
 	#include <netdb.h>
 	#include <sys/types.h>
+	#include <sys/select.h>
 	#include <sys/socket.h>
 	#include <netinet/in.h>
 	#include <netinet/tcp.h>
 	#define CLOSESOCKET(s)	close(s)
 	#define SOCKWOULDBLOCK	(errno==EAGAIN || errno==EWOULDBLOCK || errno==EINTR)
+	#define SOCKINPROGRESS	(errno==EINPROGRESS || errno==EINTR)
 	#define INVALID_SOCKET	(-1)
 	typedef int SOCKET;
 #endif
@@ -41,6 +44,10 @@
 
 #define COMLYNX_MAX_PEERS	4
 #define COMLYNX_TXBUF		4096
+
+// How long comlynx_start_connect() waits for the far end to complete the TCP
+// handshake before giving up.
+#define COMLYNX_CONNECT_TIMEOUT_MS	500
 
 #define MODE_OFF		HANDY_COMLYNX_OFF
 #define MODE_LISTEN		HANDY_COMLYNX_LISTEN
@@ -306,14 +313,55 @@ static int comlynx_start_connect(void)
 		return 0;
 	}
 
-	// Connect while still blocking so startup either works or reports why,
-	// then switch to non-blocking for the emulation loop.
+	// Connect non-blocking. A blocking connect() here stalls whatever called us
+	// for the full TCP timeout when the far end is listening but not answering
+	// - and at startup that is the emulator itself, video, audio and all, so a
+	// missing bridge used to mean a frozen window and no sound.
+	comlynx_set_nonblocking(s);
+
 	if(::connect(s, res->ai_addr, (socklen_t)res->ai_addrlen) < 0)
 	{
-		printf("ComLynx: could not connect to %s:%d\n", peerhost, peerport);
-		CLOSESOCKET(s);
-		freeaddrinfo(res);
-		return 0;
+		if(!SOCKINPROGRESS)
+		{
+			printf("ComLynx: could not connect to %s:%d\n", peerhost, peerport);
+			CLOSESOCKET(s);
+			freeaddrinfo(res);
+			return 0;
+		}
+
+		// Give the handshake a moment to finish, but never longer than this:
+		// the link is a convenience, and waiting on it is not worth holding up
+		// the emulator. A bridge that comes up later can be connected from the
+		// GUI.
+		fd_set wr, ex;
+		struct timeval tv;
+
+		FD_ZERO(&wr); FD_SET(s, &wr);
+		FD_ZERO(&ex); FD_SET(s, &ex);
+		tv.tv_sec  = 0;
+		tv.tv_usec = COMLYNX_CONNECT_TIMEOUT_MS * 1000;
+
+		int sel = select((int)s+1, NULL, &wr, &ex, &tv);
+		if(sel <= 0)
+		{
+			printf("ComLynx: no answer from %s:%d within %dms\n",
+			       peerhost, peerport, COMLYNX_CONNECT_TIMEOUT_MS);
+			CLOSESOCKET(s);
+			freeaddrinfo(res);
+			return 0;
+		}
+
+		// Writable does not mean connected: a refused connection reports ready
+		// too, with the reason parked in SO_ERROR.
+		int err = 0;
+		socklen_t errlen = sizeof(err);
+		if(getsockopt(s, SOL_SOCKET, SO_ERROR, (char *)&err, &errlen) < 0 || err!=0)
+		{
+			printf("ComLynx: could not connect to %s:%d\n", peerhost, peerport);
+			CLOSESOCKET(s);
+			freeaddrinfo(res);
+			return 0;
+		}
 	}
 	freeaddrinfo(res);
 
