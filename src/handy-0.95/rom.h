@@ -61,6 +61,11 @@ class CRom : public CLynxBase
 
 	public:
 		CRom(const char *romfile);
+		// Load the boot ROM from memory rather than from a path. Hosts with no
+		// usable filesystem view of the image - Android, where the user picks
+		// it through the storage access framework and it never exists as a
+		// plain path - have no other way in.
+		CRom(const UBYTE *romdata, ULONG romsize);
 
 	public:
 		void	Reset(void);
@@ -78,6 +83,9 @@ class CRom : public CLynxBase
 	public:
 		bool	mWriteEnable;
 	private:
+		void	Initialise(void);
+		void	CheckForFakeBoot(void);
+
 		UBYTE	mRomData[ROM_SIZE];
 		char	mFileName[1024];
 };

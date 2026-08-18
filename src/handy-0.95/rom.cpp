@@ -55,15 +55,68 @@
 
 extern CErrorInterface *gError;
 
-CRom::CRom(const char *romfile)
+void CRom::Initialise(void)
 {
 	mWriteEnable=FALSE;
-	strncpy(mFileName,romfile,sizeof(mFileName)-1);
-	mFileName[sizeof(mFileName)-1]='\0';
 	Reset();
 
 	// Initialise ROM
 	for(int loop=0;loop<ROM_SIZE;loop++) mRomData[loop]=DEFAULT_ROM_CONTENTS;
+}
+
+void CRom::CheckForFakeBoot(void)
+{
+	// Check the code that has been loaded and report an error if its a
+	// fake version of the bootrom
+
+	UBYTE mRomCheck[16]={0x38,0x80,0x0A,0x90,0x04,0x8E,0x8B,0xFD,
+						 0x18,0xE8,0x8E,0x87,0xFD,0xA2,0x02,0x8E};
+
+	static bool firsttime=TRUE;
+
+	if(firsttime)
+	{
+		firsttime=FALSE;
+		for(ULONG loop=0;loop<16;loop++)
+		{
+			if(mRomCheck[loop]!=mRomData[loop])
+			{
+				gError->Warning("FAKE LYNXBOOT.IMG - CARTRIDGES WILL NOT WORK\n\n"
+								"PLEASE READ THE ACCOMPANYING README.TXT FILE\n\n"
+								"(Do not email the author asking for this image)\n");
+				break;
+			}
+		}
+	}
+}
+
+CRom::CRom(const UBYTE *romdata, ULONG romsize)
+{
+	Initialise();
+	mFileName[0]='\0';
+
+	if(romdata==NULL || romsize<ROM_SIZE)
+	{
+		CLynxException lynxerr;
+
+		lynxerr.Message() << "The Lynx Boot ROM image couldn't be loaded!";
+		lynxerr.Description()
+			<< "The lynx emulator will not run without the Boot ROM image." << endl
+			<< "The supplied image is " << (int)romsize << " bytes long, but " << (int)ROM_SIZE << endl
+			<< "are required. It is truncated or is not a boot ROM at all.";
+		throw(lynxerr);
+	}
+
+	memcpy(mRomData,romdata,ROM_SIZE);
+
+	CheckForFakeBoot();
+}
+
+CRom::CRom(const char *romfile)
+{
+	Initialise();
+	strncpy(mFileName,romfile,sizeof(mFileName)-1);
+	mFileName[sizeof(mFileName)-1]='\0';
 
 	// Load up the file
 
@@ -100,28 +153,7 @@ CRom::CRom(const char *romfile)
 
 	fclose(fp);
 
-	// Check the code that has been loaded and report an error if its a
-	// fake version of the bootrom
-
-	UBYTE mRomCheck[16]={0x38,0x80,0x0A,0x90,0x04,0x8E,0x8B,0xFD,
-						 0x18,0xE8,0x8E,0x87,0xFD,0xA2,0x02,0x8E};
-
-	static bool firsttime=TRUE;
-
-	if(firsttime)
-	{
-		firsttime=FALSE;
-		for(ULONG loop=0;loop<16;loop++)
-		{
-			if(mRomCheck[loop]!=mRomData[loop])
-			{
-				gError->Warning("FAKE LYNXBOOT.IMG - CARTRIDGES WILL NOT WORK\n\n"
-								"PLEASE READ THE ACCOMPANYING README.TXT FILE\n\n"
-								"(Do not email the author asking for this image)\n");
-				break;
-			}
-		}
-	}
+	CheckForFakeBoot();
 }
 
 void CRom::Reset(void)

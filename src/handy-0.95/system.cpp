@@ -99,9 +99,7 @@ CSystem::CSystem(const char* gamefile,const char* romfile)
 
 	// Select the default filetype
 	UBYTE *filememory=NULL;
-	UBYTE *howardmemory=NULL;
 	ULONG filesize=0;
-	ULONG howardsize=0;
 
 	mFileType=HANDY_FILETYPE_LNX;
 	if(strcmp(gamefile,"")==0)
@@ -253,11 +251,57 @@ CSystem::CSystem(const char* gamefile,const char* romfile)
 		fclose(fp);
 	}
 
+	Construct(filememory,filesize,romfile,NULL,0,gamefile);
+}
+
+CSystem::CSystem(const UBYTE* cartdata,ULONG cartsize,const UBYTE* biosdata,ULONG biossize)
+	:mCart(NULL),
+	mRom(NULL),
+	mMemMap(NULL),
+	mRam(NULL),
+	mCpu(NULL),
+	mMikie(NULL),
+	mSusie(NULL)
+{
+#ifdef _LYNXDBG
+	mpDebugCallback=NULL;
+	mDebugCallbackObject=0;
+#endif
+
+	mFileType=HANDY_FILETYPE_LNX;
+
+	// Construct() owns the buffer from here and frees it on the way out, so
+	// the caller's image is not aliased and can be released immediately.
+	UBYTE *filememory=NULL;
+	ULONG filesize=0;
+
+	if(cartdata!=NULL && cartsize>0)
+	{
+		filesize=cartsize;
+		filememory=(UBYTE*) new UBYTE[filesize];
+		memcpy(filememory,cartdata,filesize);
+	}
+
+	Construct(filememory,filesize,NULL,biosdata,biossize,NULL);
+}
+
+void CSystem::Construct(UBYTE *filememory,ULONG filesize,
+                        const char *romfile,const UBYTE *biosdata,ULONG biossize,
+                        const char *snapshotfile)
+{
+	UBYTE *howardmemory=NULL;
+	ULONG howardsize=0;
+
 	// Now try and determine the filetype we have opened
 	if(filesize)
 	{
 		char clip[11];
-		memcpy(clip,filememory,11);
+
+		// Only read what is actually there. The sniff window is 11 bytes and
+		// a shorter file used to be read past the end of its buffer, which any
+		// truncated or deliberately malformed cartridge could trigger.
+		memset(clip,0,sizeof(clip));
+		memcpy(clip,filememory,(filesize<11)?filesize:11);
 		clip[4]=0;
 		clip[10]=0;
 
@@ -283,7 +327,7 @@ CSystem::CSystem(const char* gamefile,const char* romfile)
 
 	// Attempt to load the cartridge errors caught above here...
 
-	mRom = new CRom(romfile);
+	mRom = (romfile!=NULL) ? new CRom(romfile) : new CRom(biosdata,biossize);
 
 	// An exception from this will be caught by the level above
 
@@ -296,6 +340,22 @@ CSystem::CSystem(const char* gamefile,const char* romfile)
 				FILE	*fp;
 				char drive[3],dir[256],cartgo[256];
 				mFileType=HANDY_FILETYPE_HOMEBREW;
+
+				// howard.o is looked up next to the boot ROM, so there has to
+				// be a boot ROM path to look next to. Loaded from memory there
+				// is none, and no filesystem to search either.
+				if(romfile==NULL)
+				{
+					CLynxException lynxerr;
+					delete[] filememory;
+					lynxerr.Message() << "Handy Error: Headerless cartridge not supported";
+					lynxerr.Description()
+						<< "Headerless cartridges need the howard.o bootfile, which is" << endl
+						<< "loaded from beside the boot ROM. This system was built from" << endl
+						<< "images in memory, so there is no such location to search." << endl;
+					throw(lynxerr);
+				}
+
 				_splitpath(romfile,drive,dir,NULL,NULL);
 				strcpy(cartgo,drive);
 				strcat(cartgo,dir);
@@ -378,10 +438,27 @@ CSystem::CSystem(const char* gamefile,const char* romfile)
 
 	if(mFileType==HANDY_FILETYPE_SNAPSHOT)
 	{
-		if(!ContextLoad(gamefile))
+		// The snapshot body is re-read from the file, so a snapshot handed
+		// over as bytes has nowhere to be read back from.
+		if(snapshotfile==NULL)
 		{
 			Reset();
 			CLynxException lynxerr;
+			delete[] filememory;
+			if(howardsize) delete[] howardmemory;
+			lynxerr.Message() << "Handy Error: Snapshot load error" ;
+			lynxerr.Description()
+				<< "Snapshots cannot be loaded from memory; they are re-read" << endl
+				<< "from the file they were saved to." << endl ;
+			throw(lynxerr);
+		}
+
+		if(!ContextLoad(snapshotfile))
+		{
+			Reset();
+			CLynxException lynxerr;
+			delete[] filememory;
+			if(howardsize) delete[] howardmemory;
 			lynxerr.Message() << "Handy Error: Snapshot load error" ;
 			lynxerr.Description()
 				<< "The snapshot you selected could not be loaded." << endl

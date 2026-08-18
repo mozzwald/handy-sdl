@@ -202,6 +202,15 @@ class CSystem : public CSystemBase
 {
 	public:
 		CSystem(const char* gamefile,const char* romfile);
+		// Build a system from images already in memory, for hosts that cannot
+		// hand the core a path it can fopen() - Android being the case in
+		// hand, where both the cartridge and the boot ROM arrive through the
+		// storage access framework and never exist as plain files.
+		//
+		// Headerless cartridges and snapshots are not supported through this
+		// route: both need to reach back to the filesystem (for howard.o and
+		// for the snapshot body respectively) and throw if asked for.
+		CSystem(const UBYTE* cartdata, ULONG cartsize, const UBYTE* biosdata, ULONG biossize);
 		~CSystem();
 
 	public:
@@ -320,6 +329,15 @@ class CSystem : public CSystemBase
 		void	(*mpDebugCallback)(UOBJREF objref, char *message);
 		ULONG	mDebugCallbackObject;
 #endif
+
+	private:
+		// Shared tail of both constructors: everything from "we have the
+		// cartridge image in memory" onwards. Exactly one of romfile /
+		// biosdata supplies the boot ROM. snapshotfile is NULL when loading a
+		// snapshot is not possible (the in-memory route).
+		void	Construct(UBYTE *filememory,ULONG filesize,
+				          const char *romfile,const UBYTE *biosdata,ULONG biossize,
+				          const char *snapshotfile);
 
 	public:
 		ULONG			mCycleCountBreakpoint;
