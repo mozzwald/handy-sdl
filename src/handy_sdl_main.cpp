@@ -68,6 +68,7 @@
 #include "handy_sdl_handling.h"
 #include "handy_sdl_sound.h"
 #include "handy_sdl_comlynx.h"
+#include "handy_sdl_bootwatch.h"
 #include "handy_sdl_gui.h"
 #include "handy_sdl_config.h"
 #include "handy_sdl_usage.h"
@@ -385,6 +386,10 @@ int main(int argc, char *argv[])
 		}
 		if (!strcmp(argv[i], "-comlynxtrace"))	handy_sdl_comlynx_trace(1);
 		if (!strcmp(argv[i], "-comlynxnorxgate"))	gComLynxRxGate = 0;
+		if (!strcmp(argv[i], "-bootdir"))
+		{
+			if (i+1 < argc) handy_sdl_bootwatch_set_dir(argv[++i]);
+		}
 	}
 
 	// The command line has had its say. Remember where that left things, so
@@ -399,6 +404,19 @@ int main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 	printf("[DONE]\n");
+
+	// With no cartridge of their own, fall back to the FujiNet config
+	// cartridge shipped in the runtime's data directory, so there is something
+	// to browse hosts from. Only when -bootdir said where to look.
+	if(romfile[0]=='\0')
+	{
+		const char *config_rom = handy_sdl_bootwatch_config_rom();
+		if(config_rom!=NULL)
+		{
+			printf("ComLynx: no cartridge given, using %s\n", config_rom);
+			romfile = config_rom;
+		}
+	}
 
 	// Primary initalise of Handy
 	printf("Initialising Handy Core...    ");
@@ -495,6 +513,18 @@ int main(int argc, char *argv[])
 
 		// Update TimerCount
 		gTimerCount++;
+
+		// A staged cartridge replaces the running one, so this has to happen
+		// between batches rather than in the middle of one.
+		{
+			const char *staged = handy_sdl_bootwatch_poll();
+			if(staged!=NULL)
+			{
+				printf("ComLynx: launching staged cartridge %s\n", staged);
+				if(!handy_sdl_load_rom(staged))
+					printf("ComLynx: staged cartridge could not be loaded\n");
+			}
+		}
 
 		while( handy_sdl_update()  )
 		{
