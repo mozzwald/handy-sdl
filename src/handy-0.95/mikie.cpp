@@ -834,6 +834,22 @@ void CMikie::ComLynxTxLoopback(int data)
 {
 	TRACE_MIKIE1("ComLynxTxLoopback() - Received %04x",data);
 
+	// Gate the echo where it is produced, not where it is clocked in.
+	//
+	// ComLynx shorts Rx and Tx, so everything transmitted comes back, and
+	// RXINTEN is what a driver uses to ignore its own transmission. Deciding
+	// that later, when the byte reaches SERDAT, lets an echo survive whenever
+	// the driver re-enables RXINTEN before the byte has finished clocking in -
+	// and one surviving echo is enough to leave every later read returning the
+	// previous byte. What matters is whether the receiver was listening when
+	// the byte went out.
+	if(gComLynxRxGate && !mUART_RX_IRQ_ENABLE)
+	{
+		if(gComLynxTrace)
+			printf("ComLynx: loopback %02x dropped, RXINTEN clear\n", (unsigned)(data&0xff));
+		return;
+	}
+
 	if(mUART_Rx_waiting<UART_MAX_RX_QUEUE)
 	{
 		// Trigger incoming receive IF none waiting otherwise
